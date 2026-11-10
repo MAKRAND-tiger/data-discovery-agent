@@ -1,0 +1,84 @@
+{
+  "source_id": "link.data_open_air_chicago_hour_aggre_d4970b",
+  "kind": "dataset_link",
+  "title": "Open Air Chicago hourly aggregations (catalog.data.gov link, not reachable)",
+  "summary": "A human-supplied link to an hourly air-quality aggregation dataset titled \"Open Air Chicago hour aggregations\" on catalog.data.gov. The link's host is not on the project allowlist, so no metadata, licence, schema or sample could be read. The dataset appears to cover a US city (Chicago, per the URL slug), which is outside the IT geography of the use case; the content, period and pollutant coverage are unverified.",
+  "schema": {
+    "documented": "none",
+    "fields": [],
+    "field_count": null,
+    "notes": "Schema not read: host refused before any metadata was retrieved."
+  },
+  "temporal": {
+    "start": null,
+    "end": null,
+    "grain": "hourly",
+    "metadata_last_updated": null,
+    "open_ended": null,
+    "refresh_cadence": null
+  },
+  "spatial": {
+    "coverage": [],
+    "code_system": null,
+    "notes": "URL slug indicates Chicago (US). Not verified because the page could not be read. Use case geography is IT, so this source does not match the primary geography."
+  },
+  "ownership": {
+    "owner": null,
+    "publisher": null,
+    "steward": null
+  },
+  "licence": {
+    "name": null,
+    "evidence": "Not read. inspect_dataset_link on https://catalog.data.gov/dataset/open-air-chicago-hour-aggregations returned DOMAIN_NOT_ALLOWLISTED for host catalog.data.gov.",
+    "commercial_use": "unknown",
+    "agreement_status": null,
+    "attribution_text": null,
+    "url": null,
+    "mixed_sources": null
+  },
+  "access": {
+    "method": "dataset_link (landing page)",
+    "auth_required": null,
+    "reachable": false,
+    "request_process": "Host catalog.data.gov must be added to config/allowlist.json by the project owner before this link can be profiled. No alternative route was attempted.",
+    "approx_size_bytes": null,
+    "classification": null
+  },
+  "declared_metadata": {
+    "has_missing_values": null,
+    "contains_pii": null
+  },
+  "documentation_excerpts": [],
+  "quality_notes": [
+    "Host catalog.data.gov is refused (DOMAIN_NOT_ALLOWLISTED); no landing-page metadata, licence or data file was read.",
+    "Candidate record has empty suspected_issues; the Chicago geography is a fit problem for the IT use case regardless of the refusal.",
+    "Candidate why_relevant describes it as a US city sensor dataset; the candidate's claim that it is hourly is based on the URL slug only."
+  ],
+  "provenance": [
+    {
+      "claim": "The link is on catalog.data.gov and the host is not on the allowlist, so it is unreachable.",
+      "evidence": "inspect_dataset_link url=https://catalog.data.gov/dataset/open-air-chicago-hour-aggregations returned DOMAIN_NOT_ALLOWLISTED"
+    },
+    {
+      "claim": "The dataset is described as a hourly air-quality sensor dataset from a US city, found by human input and tied to need N1 in the prototype window.",
+      "evidence": "Candidate record link.data_open_air_chicago_hour_aggre_d4970b (why_relevant, need_ids, target_windows)"
+    },
+    {
+      "claim": "The use case needs hourly pollutant data for IT (primary geography) in the prototype window 2004-03-10 to 2005-04-04.",
+      "evidence": "Use case spec UC1, geography.primary=[IT], windows.prototype, needs.N1"
+    }
+  ],
+  "unknowns": [
+    "Dataset contents, pollutants, variables and units",
+    "Actual temporal coverage and whether it overlaps the 2004-03-10 to 2005-04-04 prototype window",
+    "Geography (Chicago per URL slug only; not confirmed)",
+    "Licence, terms of use and attribution",
+    "Publisher, owner and steward",
+    "Refresh cadence and metadata last updated date",
+    "Data file format, size and availability (no download links read)",
+    "Missing-value conventions and any sentinel codes",
+    "Whether the project owner would approve catalog.data.gov on the allowlist"
+  ],
+  "status": "unknown",
+  "location": "https://catalog.data.gov/dataset/open-air-chicago-hour-aggregations (host not allowlisted)"
+}

@@ -1,0 +1,42 @@
+{
+  "reviewer": "Makrand Bhandari",
+  "verdict": "proceed_with_conditions",
+  "conditions": [
+    {
+      "text": "Get written confirmation of permitted use for the UCI air-quality dataset. Its page says CC BY 4.0 but also says 'used exclusively for research purposes; commercial purposes are fully excluded'. Use it for the prototype only, never for the production warning model, until this is resolved.",
+      "owner": "Makrand Bhandari with the project Legal contact",
+      "due": "2026-12-15"
+    },
+    {
+      "text": "Recode the documented -200 sentinel (including the float form -200.0 in C6H6(GT)) to missing in every numeric column before any aggregation or model fit.",
+      "owner": "Makrand Bhandari (analysis)",
+      "due": "2026-12-01"
+    },
+    {
+      "text": "Obtain and record a licence for the Eurostat sdg_11_52 indicator (LIC-UNKNOWN) before any use. It is national annual context only (need N6).",
+      "owner": "Makrand Bhandari",
+      "due": "2026-12-15"
+    },
+    {
+      "text": "Obtain access to the Environment Monitoring Unit station data and the Mobility Office traffic counts (ACC-RESTRICTED) before the production window can be met.",
+      "owner": "Valdena Civic Health Office data owner",
+      "due": "2026-12-31"
+    }
+  ],
+  "agreements": [
+    {
+      "source_id": "link.uci_360",
+      "reason": "Agree it is the only usable public hourly NO2 source for prototype N1 and it covers the prototype window exactly (2004-03-10 to 2005-04-04). The -200 sentinel is documented, so it can be recoded. Agree it is a method-building source for one road-level site, not a city-wide source."
+    },
+    {
+      "source_id": "link.data_open_air_chicago_hour_aggre_d4970b",
+      "reason": "Agree with not_feasible. The host catalog.data.gov is refused by the allowlist (intended), no licence was read, and the data is for a US city outside the IT geography. The refusal is the finding; no alternate route is used."
+    }
+  ],
+  "overrides": [],
+  "traced_conclusion": {
+    "source_id": "link.uci_360",
+    "record_field": "temporal.end",
+    "could_change_if": "If the licence owner or UCI confirms commercial use is excluded, the prototype N1 use stops (the source becomes not_feasible for N1); if the -200 recode leaves too few complete hours in the prototype window, coverage falls below the 0.95 partial-window threshold."
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "source_id": "internal.store.calendar",
+  "kind": "internal",
+  "title": "Shop calendar (opening days, closures, local events)",
+  "summary": "Internal daily calendar of the Valdena shop with one row per calendar day, a boolean is_open flag and a free-text event_name for local events. Catalog states temporal coverage from 2022-01-01 with no end date and a weekly refresh; approximate row count is 1500. The record was read from the catalog only: no sample was taken because the store is reachable only via warehouse SQL for analytics roles, and no wiki page documents the calendar itself.",
+  "schema": {
+    "documented": "structured",
+    "field_count": 3,
+    "fields": [
+      {
+        "name": "calendar_date",
+        "type": "date",
+        "description": "Day",
+        "pii": false
+      },
+      {
+        "name": "is_open",
+        "type": "boolean",
+        "description": "Whether the shop was open",
+        "pii": false
+      },
+      {
+        "name": "event_name",
+        "type": "string",
+        "description": "Local event that day, if any",
+        "pii": false
+      }
+    ],
+    "notes": "Column descriptions are one line each; no units, no source or maintenance description, no location/branch field."
+  },
+  "temporal": {
+    "start": "2022-01-01",
+    "end": null,
+    "grain": "daily",
+    "metadata_last_updated": "2026-10-10",
+    "open_ended": true,
+    "refresh_cadence": "weekly"
+  },
+  "spatial": {
+    "coverage": [
+      "IT"
+    ],
+    "code_system": "free-text event names; no geographic code or branch field",
+    "notes": "Catalog location is an Azure path for the Valdena shop calendar; the catalog does not state the city or branch covered, so local-event relevance to the shop's location is unconfirmed."
+  },
+  "ownership": {
+    "owner": "Store Operations",
+    "publisher": null,
+    "steward": "Store Operations steward (named individual in catalog)"
+  },
+  "licence": {
+    "name": "internal",
+    "agreement_status": null,
+    "attribution_text": null,
+    "commercial_use": "not_applicable",
+    "evidence": "get_catalog_entry internal.store.calendar: classification 'internal'",
+    "mixed_sources": false,
+    "url": null
+  },
+  "access": {
+    "method": "warehouse_sql",
+    "auth_required": true,
+    "reachable": null,
+    "classification": "internal",
+    "request_process": "Open to analytics roles (catalog access.request_process). Not tested: no connection attempted.",
+    "approx_size_bytes": null
+  },
+  "declared_metadata": {
+    "status": "active",
+    "contains_pii": false,
+    "grain": "daily",
+    "refresh_cadence": "weekly",
+    "row_count_approx": 1500,
+    "classification": "internal"
+  },
+  "documentation_excerpts": [
+    "Opening days, closures and local events for the shop. (catalog description)",
+    "Whether the shop was open (is_open column description)",
+    "Local event that day, if any (event_name column description)",
+    "Treat those days as missing, not as zero sales. (wiki till_migration_2024, body, last_edited 2024-03-12; refers to sales.daily_by_product, not to this calendar)"
+  ],
+  "quality_notes": [
+    "Row count vs coverage: row_count_approx 1500 does not match a daily calendar from 2022-01-01 to the catalog export date 2026-10-14 (about 1,750 calendar days). Either about 250 days are missing or the row count is stale; unverified.",
+    "Till-migration gap: the candidate's claim that this calendar is needed to check the till-migration gap is not supported by documentation. The only wiki page on the migration (till_migration_2024, last edited 2024-03-12) says gap days (2024-02-05 to 2024-03-10) are missing in sales.daily_by_product and says nothing about the calendar; is_open for those days is not documented.",
+    "No wiki backlinks: no page describes how is_open or event_name are maintained, sourced or validated.",
+    "event_name has no start/end, source, or confidence fields; event list completeness is unknown.",
+    "No location/branch field: cannot confirm the calendar covers the Valdena shop's city/branch (candidate's own suspicion, confirmed as undocumented).",
+    "Refresh: weekly with last refresh 2026-10-10, so recent days are updated only weekly; catalog exported 2026-10-14.",
+    "Calendar coverage of the history window (2023-06-01 to 2025-05-31) and recent window (2025-06-01 to 2026-03-31) is implied by temporal_coverage start 2022-01-01 and open end, but not verified by sample."
+  ],
+  "provenance": [
+    {
+      "claim": "Source is an internal catalog entry, owner Store Operations, status active, daily grain, classification internal, no PII",
+      "evidence": "get_catalog_entry internal.store.calendar"
+    },
+    {
+      "claim": "Temporal coverage 2022-01-01 with no end date; weekly refresh; last refreshed 2026-10-10; approx 1500 rows",
+      "evidence": "get_catalog_entry internal.store.calendar (temporal_coverage, refresh_cadence, last_refreshed, row_count_approx)"
+    },
+    {
+      "claim": "Access is warehouse_sql, open to analytics roles; not tested",
+      "evidence": "get_catalog_entry internal.store.calendar (access)"
+    },
+    {
+      "claim": "No wiki page documents this calendar; the only related wiki page covers the 2024 till migration and refers to sales.daily_by_product",
+      "evidence": "get_catalog_entry backlinks empty; search_internal_catalog 'shop calendar opening days closures local events'; read_wiki_page till_migration_2024"
+    },
+    {
+      "claim": "Till migration gap 2024-02-05 to 2024-03-10 is documented for sales, not the calendar",
+      "evidence": "read_wiki_page till_migration_2024"
+    }
+  ],
+  "unknowns": [
+    "Whether the store was actually open on each day (no sample or data read)",
+    "Whether row count 1500 is current or stale; actual row count and date gaps",
+    "Which city or branch the calendar covers",
+    "Who curates event_name entries and how complete the event list is",
+    "Source of is_open (manual entry, POS-derived, or other)",
+    "Whether is_open is set for the 2024 till-migration gap days",
+    "Whether analytics access is granted to this project; connection not tested",
+    "Data sample and column types beyond catalog descriptions"
+  ]
+}

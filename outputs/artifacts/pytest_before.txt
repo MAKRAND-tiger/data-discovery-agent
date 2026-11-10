@@ -1,0 +1,515 @@
+.......FFFFFFFFFFFFFFFFFFFF.........................                     [100%]
+================================== FAILURES ===================================
+________________________ test_g1_uci_page_link_or_text ________________________
+
+fixture_text = <function fixture_text.<locals>.<lambda> at 0x000001484A9A74C0>
+
+    def test_g1_uci_page_link_or_text(fixture_text):
+>       out = extract_licence(fixture_text("uci_321_repository_page.html"))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '<!DOCTYPE html>\n<html lang="en" data-theme="light">\n  <head>\n    <meta charset="UTF-8" />\n\n    <meta name="viewp...e-h="svelte-sdljcx">Login</span></a></li> </ul></div></div> \n\t\t\t\n\t\t\t\n\t\t\t\n\t\t</div>\n  </body>\n</html>\n'
+jsonld = None
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+__________________________ test_g1_zenodo_jsonld_url __________________________
+
+fixture_text = <function fixture_text.<locals>.<lambda> at 0x000001484A7A6FC0>
+
+    def test_g1_zenodo_jsonld_url(fixture_text):
+>       out = extract_licence(fixture_text("zenodo_record_landing_page.html"))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '\n\n\n<!DOCTYPE html>\n<html lang="en" dir="ltr">\n  <head>\n  \n    \n    <meta charset="utf-8">\n    <meta http-equ... button small" id="cookies-essential">Accept only essential cookies</button>\n  </div>\n</div>\n\n\n  </body>\n</html>'
+jsonld = None
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+___________________ test_g1_kaggle_unknown_is_not_a_licence ___________________
+
+fixture_text = <function fixture_text.<locals>.<lambda> at 0x000001484A7A6480>
+
+    def test_g1_kaggle_unknown_is_not_a_licence(fixture_text):
+>       out = extract_licence(fixture_text("kaggle_ecommerce_landing_page.html"))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '\n\n<!DOCTYPE html>\n<html lang="en">\n\n<head>\n  <title>E-Commerce Data | Kaggle</title>\n  <meta charset="utf-8" /...\n  \n    \n</head>\n<body>\n  <div id="root">\n    \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n  </div>\n</body>\n</html>\n'
+jsonld = None
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+__________________ test_g1_jsonld_variants[jsonld0-ODbL 1.0] __________________
+
+jsonld = [{'@type': 'Dataset', 'license': 'http://opendatacommons.org/licenses/odbl/1.0/'}]
+expected = 'ODbL 1.0'
+
+    @pytest.mark.parametrize("jsonld,expected", [
+        ([{"@type": "Dataset", "license": "http://opendatacommons.org/licenses/odbl/1.0/"}], "ODbL 1.0"),
+        ([{"@type": "Dataset", "license": "https://choosealicense.com/licenses/cc0-1.0/"}], "CC0 1.0"),
+        ([{"@type": "Dataset", "license": {"@type": "CreativeWork", "name": "CC BY-NC-SA 4.0", "url": ""}}], "CC BY-NC-SA 4.0"),
+    ])
+    def test_g1_jsonld_variants(jsonld, expected):
+>       assert extract_licence("<html></html>", jsonld)["licence_name"] == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '<html></html>'
+jsonld = [{'@type': 'Dataset', 'license': 'http://opendatacommons.org/licenses/odbl/1.0/'}]
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+__________________ test_g1_jsonld_variants[jsonld1-CC0 1.0] ___________________
+
+jsonld = [{'@type': 'Dataset', 'license': 'https://choosealicense.com/licenses/cc0-1.0/'}]
+expected = 'CC0 1.0'
+
+    @pytest.mark.parametrize("jsonld,expected", [
+        ([{"@type": "Dataset", "license": "http://opendatacommons.org/licenses/odbl/1.0/"}], "ODbL 1.0"),
+        ([{"@type": "Dataset", "license": "https://choosealicense.com/licenses/cc0-1.0/"}], "CC0 1.0"),
+        ([{"@type": "Dataset", "license": {"@type": "CreativeWork", "name": "CC BY-NC-SA 4.0", "url": ""}}], "CC BY-NC-SA 4.0"),
+    ])
+    def test_g1_jsonld_variants(jsonld, expected):
+>       assert extract_licence("<html></html>", jsonld)["licence_name"] == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '<html></html>'
+jsonld = [{'@type': 'Dataset', 'license': 'https://choosealicense.com/licenses/cc0-1.0/'}]
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+______________ test_g1_jsonld_variants[jsonld2-CC BY-NC-SA 4.0] _______________
+
+jsonld = [{'@type': 'Dataset', 'license': {'@type': 'CreativeWork', 'name': 'CC BY-NC-SA 4.0', 'url': ''}}]
+expected = 'CC BY-NC-SA 4.0'
+
+    @pytest.mark.parametrize("jsonld,expected", [
+        ([{"@type": "Dataset", "license": "http://opendatacommons.org/licenses/odbl/1.0/"}], "ODbL 1.0"),
+        ([{"@type": "Dataset", "license": "https://choosealicense.com/licenses/cc0-1.0/"}], "CC0 1.0"),
+        ([{"@type": "Dataset", "license": {"@type": "CreativeWork", "name": "CC BY-NC-SA 4.0", "url": ""}}], "CC BY-NC-SA 4.0"),
+    ])
+    def test_g1_jsonld_variants(jsonld, expected):
+>       assert extract_licence("<html></html>", jsonld)["licence_name"] == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '<html></html>'
+jsonld = [{'@type': 'Dataset', 'license': {'@type': 'CreativeWork', 'name': 'CC BY-NC-SA 4.0', 'url': ''}}]
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+___________________ test_g1_text_and_links[html0-OGL v3.0] ____________________
+
+html = '<p>Released under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.</p>'
+expected = 'OGL v3.0'
+
+    @pytest.mark.parametrize("html,expected", [
+        ('<p>Released under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">'
+         "Open Government Licence v3.0</a>.</p>", "OGL v3.0"),
+        ('<p>This dataset is licensed under a <a href="https://creativecommons.org/licenses/by-nc/4.0/legalcode">'
+         "Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)</a> license.</p>", "CC BY-NC 4.0"),
+        ("<p>No terms are given on this page.</p>", None),
+    ])
+    def test_g1_text_and_links(html, expected):
+>       out = extract_licence(html, [])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '<p>Released under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>.</p>'
+jsonld = []
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+_________________ test_g1_text_and_links[html1-CC BY-NC 4.0] __________________
+
+html = '<p>This dataset is licensed under a <a href="https://creativecommons.org/licenses/by-nc/4.0/legalcode">Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)</a> license.</p>'
+expected = 'CC BY-NC 4.0'
+
+    @pytest.mark.parametrize("html,expected", [
+        ('<p>Released under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">'
+         "Open Government Licence v3.0</a>.</p>", "OGL v3.0"),
+        ('<p>This dataset is licensed under a <a href="https://creativecommons.org/licenses/by-nc/4.0/legalcode">'
+         "Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)</a> license.</p>", "CC BY-NC 4.0"),
+        ("<p>No terms are given on this page.</p>", None),
+    ])
+    def test_g1_text_and_links(html, expected):
+>       out = extract_licence(html, [])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '<p>This dataset is licensed under a <a href="https://creativecommons.org/licenses/by-nc/4.0/legalcode">Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)</a> license.</p>'
+jsonld = []
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+____ test_g1_text_and_links[<p>No terms are given on this page.</p>-None] _____
+
+html = '<p>No terms are given on this page.</p>', expected = None
+
+    @pytest.mark.parametrize("html,expected", [
+        ('<p>Released under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">'
+         "Open Government Licence v3.0</a>.</p>", "OGL v3.0"),
+        ('<p>This dataset is licensed under a <a href="https://creativecommons.org/licenses/by-nc/4.0/legalcode">'
+         "Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)</a> license.</p>", "CC BY-NC 4.0"),
+        ("<p>No terms are given on this page.</p>", None),
+    ])
+    def test_g1_text_and_links(html, expected):
+>       out = extract_licence(html, [])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+html = '<p>No terms are given on this page.</p>', jsonld = []
+
+    def extract_licence(html: str, jsonld: list[dict] | None = None) -> dict:
+>       raise NotImplementedTool("extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.")
+E       discovery_agent.tools.base.NotImplementedTool: extract_licence is a learner TODO (G1). See discovery_agent/tools/licence.py.
+
+discovery_agent\tools\licence.py:75: NotImplementedTool
+__________________________ test_g3_eurostat_response __________________________
+
+fixture_json = <function fixture_json.<locals>.<lambda> at 0x000001484A7A4680>
+
+    def test_g3_eurostat_response(fixture_json):
+>       out = jsonstat_summary(fixture_json("eurostat_isoc_ec_ibuy_2009_2011.json"))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+dataset = {'version': '2.0', 'class': 'dataset', 'label': 'Internet purchases by individuals (2002-2019)', 'source': 'ESTAT', ...}
+
+    def jsonstat_summary(dataset: dict) -> dict:
+>       raise NotImplementedTool("jsonstat_summary is a learner TODO (G3). See discovery_agent/tools/formats.py.")
+E       discovery_agent.tools.base.NotImplementedTool: jsonstat_summary is a learner TODO (G3). See discovery_agent/tools/formats.py.
+
+discovery_agent\tools\formats.py:60: NotImplementedTool
+________________ test_g3_list_values_missing_cells_and_status _________________
+
+    def test_g3_list_values_missing_cells_and_status():
+        ds = {"version": "2.0", "class": "dataset", "label": "L", "id": ["geo", "time"], "size": [2, 2],
+              "dimension": {"geo": {"category": {"index": ["FR", "EL"], "label": {"FR": "France", "EL": "Greece"}}},
+                            "time": {"category": {"index": {"2011": 1, "2010": 0}}}},
+              "value": [1.0, None, 2.0, 3.0], "status": {"3": "p"}}
+>       out = jsonstat_summary(ds)
+              ^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+dataset = {'version': '2.0', 'class': 'dataset', 'label': 'L', 'id': ['geo', 'time'], ...}
+
+    def jsonstat_summary(dataset: dict) -> dict:
+>       raise NotImplementedTool("jsonstat_summary is a learner TODO (G3). See discovery_agent/tools/formats.py.")
+E       discovery_agent.tools.base.NotImplementedTool: jsonstat_summary is a learner TODO (G3). See discovery_agent/tools/formats.py.
+
+discovery_agent\tools\formats.py:60: NotImplementedTool
+_______________________ test_g4_out_of_window_and_stale _______________________
+
+uc1 = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def test_g4_out_of_window_and_stale(uc1, settings):
+        cand = {"need_ids": ["N1"], "target_windows": ["prototype"]}
+>       flags = risk_rules.rule_temporal_coverage(rec("1990-01-01", "1998-12-31"), cand, uc1, settings)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+record = {'source_id': 'x', 'kind': 'uci', 'temporal': {'start': '1990-01-01', 'end': '1998-12-31', 'grain': '15min'}, 'declared_metadata': {}, ...}
+candidate = {'need_ids': ['N1'], 'target_windows': ['prototype']}
+uc = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def rule_temporal_coverage(record: dict, candidate: dict, uc: dict, settings: dict) -> list[Flag]:
+        """Coverage of the candidate's target windows, plus staleness.
+    
+        - Skip records whose temporal.grain is "static", or whose start is unknown.
+        - Treat a null end as "still updating", i.e. covered up to uc["as_of"].
+        - For each window id in candidate["target_windows"], compute the fraction of that window
+          (uc["windows"], inclusive dates) covered by [start, end].
+            all fractions == 0                                      -> COV-OUT-OF-WINDOW
+            otherwise any fraction < settings["rules"]["partial_window_threshold"] -> COV-PARTIAL-WINDOW
+        - FRS-STALE if end is not null and end is more than settings["rules"]["stale_after_years"]
+          years before uc["as_of"].
+        Evidence strings must name the window(s) and the dates you compared.
+        """
+>       raise NotImplementedError("rule_temporal_coverage is a learner TODO (G4)")
+E       NotImplementedError: rule_temporal_coverage is a learner TODO (G4)
+
+discovery_agent\risk_rules.py:119: NotImplementedError
+__________________ test_g4_partial_window_across_two_windows __________________
+
+uc1 = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def test_g4_partial_window_across_two_windows(uc1, settings):
+        cand = {"need_ids": ["N6"], "target_windows": ["prototype", "production"]}
+>       assert codes(risk_rules.rule_temporal_coverage(rec("2005-01-01", "2023-12-31", "annual"), cand, uc1, settings)) == {
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            "COV-PARTIAL-WINDOW"}
+
+tests\test_learner_gaps.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+record = {'source_id': 'x', 'kind': 'uci', 'temporal': {'start': '2005-01-01', 'end': '2023-12-31', 'grain': 'annual'}, 'declared_metadata': {}, ...}
+candidate = {'need_ids': ['N6'], 'target_windows': ['prototype', 'production']}
+uc = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def rule_temporal_coverage(record: dict, candidate: dict, uc: dict, settings: dict) -> list[Flag]:
+        """Coverage of the candidate's target windows, plus staleness.
+    
+        - Skip records whose temporal.grain is "static", or whose start is unknown.
+        - Treat a null end as "still updating", i.e. covered up to uc["as_of"].
+        - For each window id in candidate["target_windows"], compute the fraction of that window
+          (uc["windows"], inclusive dates) covered by [start, end].
+            all fractions == 0                                      -> COV-OUT-OF-WINDOW
+            otherwise any fraction < settings["rules"]["partial_window_threshold"] -> COV-PARTIAL-WINDOW
+        - FRS-STALE if end is not null and end is more than settings["rules"]["stale_after_years"]
+          years before uc["as_of"].
+        Evidence strings must name the window(s) and the dates you compared.
+        """
+>       raise NotImplementedError("rule_temporal_coverage is a learner TODO (G4)")
+E       NotImplementedError: rule_temporal_coverage is a learner TODO (G4)
+
+discovery_agent\risk_rules.py:119: NotImplementedError
+___________________ test_g4_open_ended_source_starting_late ___________________
+
+uc1 = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def test_g4_open_ended_source_starting_late(uc1, settings):
+        cand = {"need_ids": ["N2"], "target_windows": ["production"]}
+>       assert codes(risk_rules.rule_temporal_coverage(rec("2024-06-01", None, "hourly"), cand, uc1, settings)) == {"COV-PARTIAL-WINDOW"}
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+record = {'source_id': 'x', 'kind': 'uci', 'temporal': {'start': '2024-06-01', 'end': None, 'grain': 'hourly'}, 'declared_metadata': {}, ...}
+candidate = {'need_ids': ['N2'], 'target_windows': ['production']}
+uc = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def rule_temporal_coverage(record: dict, candidate: dict, uc: dict, settings: dict) -> list[Flag]:
+        """Coverage of the candidate's target windows, plus staleness.
+    
+        - Skip records whose temporal.grain is "static", or whose start is unknown.
+        - Treat a null end as "still updating", i.e. covered up to uc["as_of"].
+        - For each window id in candidate["target_windows"], compute the fraction of that window
+          (uc["windows"], inclusive dates) covered by [start, end].
+            all fractions == 0                                      -> COV-OUT-OF-WINDOW
+            otherwise any fraction < settings["rules"]["partial_window_threshold"] -> COV-PARTIAL-WINDOW
+        - FRS-STALE if end is not null and end is more than settings["rules"]["stale_after_years"]
+          years before uc["as_of"].
+        Evidence strings must name the window(s) and the dates you compared.
+        """
+>       raise NotImplementedError("rule_temporal_coverage is a learner TODO (G4)")
+E       NotImplementedError: rule_temporal_coverage is a learner TODO (G4)
+
+discovery_agent\risk_rules.py:119: NotImplementedError
+_______________ test_g4_full_coverage_and_static_raise_nothing ________________
+
+uc1 = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def test_g4_full_coverage_and_static_raise_nothing(uc1, settings):
+        cand = {"need_ids": ["N1"], "target_windows": ["prototype"]}
+        # Full coverage of the prototype window: the only flag allowed is staleness (2005 data, as-of 2026).
+>       assert codes(risk_rules.rule_temporal_coverage(rec("2004-03-10", "2005-04-04", "hourly"), cand, uc1, settings)) == {"FRS-STALE"}
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:120: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+record = {'source_id': 'x', 'kind': 'uci', 'temporal': {'start': '2004-03-10', 'end': '2005-04-04', 'grain': 'hourly'}, 'declared_metadata': {}, ...}
+candidate = {'need_ids': ['N1'], 'target_windows': ['prototype']}
+uc = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def rule_temporal_coverage(record: dict, candidate: dict, uc: dict, settings: dict) -> list[Flag]:
+        """Coverage of the candidate's target windows, plus staleness.
+    
+        - Skip records whose temporal.grain is "static", or whose start is unknown.
+        - Treat a null end as "still updating", i.e. covered up to uc["as_of"].
+        - For each window id in candidate["target_windows"], compute the fraction of that window
+          (uc["windows"], inclusive dates) covered by [start, end].
+            all fractions == 0                                      -> COV-OUT-OF-WINDOW
+            otherwise any fraction < settings["rules"]["partial_window_threshold"] -> COV-PARTIAL-WINDOW
+        - FRS-STALE if end is not null and end is more than settings["rules"]["stale_after_years"]
+          years before uc["as_of"].
+        Evidence strings must name the window(s) and the dates you compared.
+        """
+>       raise NotImplementedError("rule_temporal_coverage is a learner TODO (G4)")
+E       NotImplementedError: rule_temporal_coverage is a learner TODO (G4)
+
+discovery_agent\risk_rules.py:119: NotImplementedError
+________________________________ test_g4_grain ________________________________
+
+uc1 = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def test_g4_grain(uc1, settings):
+>       assert codes(risk_rules.rule_grain(rec("2004-01-01", None, "monthly"), {"need_ids": ["N1"]}, uc1, settings)) == {"COV-GRAIN-MISMATCH"}
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+record = {'source_id': 'x', 'kind': 'uci', 'temporal': {'start': '2004-01-01', 'end': None, 'grain': 'monthly'}, 'declared_metadata': {}, ...}
+candidate = {'need_ids': ['N1']}
+uc = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def rule_grain(record: dict, candidate: dict, uc: dict, settings: dict) -> list[Flag]:
+        """COV-GRAIN-MISMATCH if the record's grain is coarser than min_grain of any need the
+        candidate serves (candidate["need_ids"] -> uc["needs"]). Only grains in GRAIN_ORDER are
+        comparable; "event", "static" and "unknown" on either side never raise the flag."""
+>       raise NotImplementedError("rule_grain is a learner TODO (G4)")
+E       NotImplementedError: rule_grain is a learner TODO (G4)
+
+discovery_agent\risk_rules.py:126: NotImplementedError
+_______________________ test_g4_metadata_contradiction ________________________
+
+uc1 = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def test_g4_metadata_contradiction(uc1, settings):
+        c = {"need_ids": ["N1"], "target_windows": ["prototype"]}
+        r235 = rec("2006-12-16", "2010-11-26", declared_metadata={"has_missing_values": "no"},
+                   documentation_excerpts=["The dataset contains some missing values in the measurements (nearly 1,25% of the rows)."])
+>       assert codes(risk_rules.rule_metadata_contradiction(r235, c, uc1, settings)) == {"DQ-METADATA-CONTRADICTION"}
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_learner_gaps.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+record = {'source_id': 'x', 'kind': 'uci', 'temporal': {'start': '2006-12-16', 'end': '2010-11-26', 'grain': '15min'}, 'declared_metadata': {'has_missing_values': 'no'}, ...}
+candidate = {'need_ids': ['N1'], 'target_windows': ['prototype']}
+uc = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def rule_metadata_contradiction(record: dict, candidate: dict, uc: dict, settings: dict) -> list[Flag]:
+        """DQ-METADATA-CONTRADICTION when record["declared_metadata"]["has_missing_values"] is a
+        'no' (False, "no", "false") but documentation_excerpts or quality_notes describe missing
+        values (e.g. "missing values", "absence of value", "-200", "?" used as missing, "NaN").
+        Careful: "Data set has no missing values" is NOT a contradiction. Strip negated phrases
+        before matching."""
+>       raise NotImplementedError("rule_metadata_contradiction is a learner TODO (G4)")
+E       NotImplementedError: rule_metadata_contradiction is a learner TODO (G4)
+
+discovery_agent\risk_rules.py:135: NotImplementedError
+____________________ test_g4_evaluate_has_no_skipped_rules ____________________
+
+uc1 = {'id': 'UC1', 'title': 'Air quality and traffic: can we explain poor-air days and warn clinic patients in time?', 'client': 'Valdena Civic Health Office (fictional, northern Italy)', 'brief_file': 'use_cases/UC1_air_quality.md', ...}
+settings = {'http': {'timeout_s': 25, 'max_bytes_default': 2000000, 'max_bytes_hard_cap': 5000000, 'max_requests_per_run': 150, ....elism': 4, ...}, 'rules': {'large_payload_bytes': 100000000, 'stale_after_years': 5, 'partial_window_threshold': 0.95}}
+
+    def test_g4_evaluate_has_no_skipped_rules(uc1, settings):
+        _, warnings = risk_rules.evaluate(rec("2004-03-10", "2005-04-04", "hourly"), {"need_ids": ["N1"], "target_windows": ["prototype"]}, uc1, settings)
+>       assert warnings == []
+E       AssertionError: assert ['rule_tempor...er TODO (G4)'] == []
+E         
+E         Left contains 3 more items, first extra item: 'rule_temporal_coverage skipped: rule_temporal_coverage is a learner TODO (G4)'
+E         Use -v to get more diff
+
+tests\test_learner_gaps.py:151: AssertionError
+______________________ test_g5_calibration_rules_written ______________________
+
+    def test_g5_calibration_rules_written():
+        prompt = (PROMPTS_DIR / "risk_assessor.md").read_text()
+>       assert "LEARNER TODO (G5)" not in prompt, "replace the G5 comment with your calibration rules"
+E       AssertionError: replace the G5 comment with your calibration rules
+E       assert 'LEARNER TODO (G5)' not in '# Role: Ris... drive it.\n'
+E         
+E         'LEARNER TODO (G5)' is contained here:
+E           te.
+E           
+E           <!-- LEARNER TODO (G5): replace this comment with your verdict calibration rules.
+E         ?      +++++++++++++++++
+E                Write 6-10 decision rules that map flag patterns to verdicts, and say how severity...
+E         
+E         ...Full output truncated, use '-vv' to show
+
+tests\test_learner_gaps.py:157: AssertionError
+____________ test_g6_supplementary_hosts_allowlisted[ec.europa.eu] ____________
+
+host = 'ec.europa.eu'
+
+    @pytest.mark.parametrize("host", ["ec.europa.eu"])
+    def test_g6_supplementary_hosts_allowlisted(host):
+>       assert host_allowed(host, load_allowlist()), f"add {host} to config/allowlist.json and justify it in outputs/artifacts/decisions.md"
+E       AssertionError: add ec.europa.eu to config/allowlist.json and justify it in outputs/artifacts/decisions.md
+E       assert False
+E        +  where False = host_allowed('ec.europa.eu', ['archive.ics.uci.edu', 'archive-api.open-meteo.com', 'open-meteo.com', 'date.nager.at', 'github.com', 'raw.githubusercontent.com'])
+E        +    where ['archive.ics.uci.edu', 'archive-api.open-meteo.com', 'open-meteo.com', 'date.nager.at', 'github.com', 'raw.githubusercontent.com'] = load_allowlist()
+
+tests\test_learner_gaps.py:167: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_learner_gaps.py::test_g1_uci_page_link_or_text - discovery_...
+FAILED tests/test_learner_gaps.py::test_g1_zenodo_jsonld_url - discovery_agen...
+FAILED tests/test_learner_gaps.py::test_g1_kaggle_unknown_is_not_a_licence - ...
+FAILED tests/test_learner_gaps.py::test_g1_jsonld_variants[jsonld0-ODbL 1.0]
+FAILED tests/test_learner_gaps.py::test_g1_jsonld_variants[jsonld1-CC0 1.0]
+FAILED tests/test_learner_gaps.py::test_g1_jsonld_variants[jsonld2-CC BY-NC-SA 4.0]
+FAILED tests/test_learner_gaps.py::test_g1_text_and_links[html0-OGL v3.0] - d...
+FAILED tests/test_learner_gaps.py::test_g1_text_and_links[html1-CC BY-NC 4.0]
+FAILED tests/test_learner_gaps.py::test_g1_text_and_links[<p>No terms are given on this page.</p>-None]
+FAILED tests/test_learner_gaps.py::test_g3_eurostat_response - discovery_agen...
+FAILED tests/test_learner_gaps.py::test_g3_list_values_missing_cells_and_status
+FAILED tests/test_learner_gaps.py::test_g4_out_of_window_and_stale - NotImple...
+FAILED tests/test_learner_gaps.py::test_g4_partial_window_across_two_windows
+FAILED tests/test_learner_gaps.py::test_g4_open_ended_source_starting_late - ...
+FAILED tests/test_learner_gaps.py::test_g4_full_coverage_and_static_raise_nothing
+FAILED tests/test_learner_gaps.py::test_g4_grain - NotImplementedError: rule_...
+FAILED tests/test_learner_gaps.py::test_g4_metadata_contradiction - NotImplem...
+FAILED tests/test_learner_gaps.py::test_g4_evaluate_has_no_skipped_rules - As...
+FAILED tests/test_learner_gaps.py::test_g5_calibration_rules_written - Assert...
+FAILED tests/test_learner_gaps.py::test_g6_supplementary_hosts_allowlisted[ec.europa.eu]
+20 failed, 32 passed in 2.57s

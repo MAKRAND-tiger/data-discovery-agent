@@ -1,0 +1,116 @@
+{
+  "source_id": "internal.clinic.resp_visits_daily",
+  "kind": "internal",
+  "title": "Respiratory visits (daily, by district), Clinical Analytics",
+  "summary": "Internal warehouse table of respiratory clinic visit counts per day and per district, owned by Clinical Analytics (steward Chiara Conti), with no patient identifiers according to the catalog. Catalog grain is daily, temporal coverage starts 2022-01-01 and is open-ended, with daily refresh and last refresh 2026-10-14; approximate row count 40,000. The wiki clinic data policy allows only this aggregated table for surveillance analysis, and the patient-level table is excluded.",
+  "schema": {
+    "documented": "structured",
+    "field_count": 3,
+    "fields": [
+      {
+        "name": "visit_date",
+        "type": "date",
+        "description": "Day of the visits",
+        "pii": false
+      },
+      {
+        "name": "district",
+        "type": "string",
+        "description": "District of residence",
+        "pii": false
+      },
+      {
+        "name": "visit_count",
+        "type": "integer",
+        "description": "Respiratory visits that day",
+        "pii": false
+      }
+    ],
+    "notes": "Catalog column descriptions only. No code list for district, no statement of whether visit_date is registration or clinical date, and no statement of how zero-count days are represented."
+  },
+  "temporal": {
+    "start": "2022-01-01",
+    "end": null,
+    "grain": "daily",
+    "metadata_last_updated": "2026-10-14",
+    "open_ended": true,
+    "refresh_cadence": "daily"
+  },
+  "spatial": {
+    "coverage": [
+      "IT"
+    ],
+    "code_system": "free-text or local district identifier (code list not documented)",
+    "notes": "Geography is the city of Valdena (fictional, northern Italy) per the use-case spec; district is described as district of residence. Code list not documented."
+  },
+  "ownership": {
+    "owner": "Clinical Analytics",
+    "publisher": null,
+    "steward": "Chiara Conti"
+  },
+  "licence": {
+    "name": "internal",
+    "evidence": "catalog classification 'internal' (get_catalog_entry internal.clinic.resp_visits_daily); wiki clinic_data_policy restricts use to daily district counts for this surveillance purpose",
+    "agreement_status": null,
+    "commercial_use": "not_applicable",
+    "attribution_text": null,
+    "mixed_sources": false,
+    "url": null
+  },
+  "access": {
+    "method": "warehouse_sql",
+    "auth_required": true,
+    "reachable": null,
+    "request_process": "Request to Clinical Analytics (catalog access.request_process). Location azure://valdena-health/clinic/resp_visits_daily. Not queried by this profiler; access not verified.",
+    "classification": "internal",
+    "approx_size_bytes": null
+  },
+  "declared_metadata": {
+    "contains_pii": false,
+    "classification": "internal",
+    "status": "active",
+    "row_count_approx": 40000,
+    "has_missing_values": null
+  },
+  "documentation_excerpts": [
+    "Catalog description: \"Respiratory clinic visits counted per day and per district. Contains no patient identifiers.\"",
+    "clinic_data_policy: \"Only daily counts by district (`clinic.resp_visits_daily`) may be used for this purpose.\"",
+    "clinic_data_policy: \"Patient postcode and age band are personal data. They must not leave the clinic systems for analysis.\" (last_edited 2025-02-01, owner Data Protection Office)"
+  ],
+  "quality_notes": [
+    "Policy page (clinic_data_policy, last edited 2025-02-01) permits the daily district table but does not state a small-cell suppression rule; the rule is undocumented, so small district-day counts may be disclosure-sensitive or suppressed in ways not visible here.",
+    "visit_date meaning (registration vs clinical date) is not documented in the catalog or the policy.",
+    "Handling of zero-count days versus missing days is not documented; a missing row may mean zero visits or a feed gap.",
+    "Clinic opening/closing changes may show up as zeros or gaps; not checked, because the table was not queried.",
+    "Catalog says 'daily' refresh and last_refreshed 2026-10-14, but no wiki page confirms refresh completeness.",
+    "Row count of approx. 40,000 is catalog-stated only; not verified. Over 2022-01-01 to 2026-10-14 this is roughly 23 rows per day, which is plausible for several districts but cannot be confirmed without a query."
+  ],
+  "provenance": [
+    {
+      "claim": "Table is internal, owned by Clinical Analytics with steward Chiara Conti, daily grain, coverage from 2022-01-01 open-ended, last refreshed 2026-10-14, approx. 40,000 rows",
+      "evidence": "get_catalog_entry internal.clinic.resp_visits_daily"
+    },
+    {
+      "claim": "Columns are visit_date (date), district (string), visit_count (integer), with no patient identifiers and contains_pii false",
+      "evidence": "get_catalog_entry internal.clinic.resp_visits_daily (columns)"
+    },
+    {
+      "claim": "Policy permits only daily district counts for this analysis and excludes patient-level records; personal data (postcode, age band) must not leave clinic systems",
+      "evidence": "read_wiki_page clinic_data_policy (last_edited 2025-02-01, owner Data Protection Office)"
+    },
+    {
+      "claim": "Access is via warehouse SQL on request to Clinical Analytics; no query was run",
+      "evidence": "get_catalog_entry internal.clinic.resp_visits_daily (access)"
+    }
+  ],
+  "unknowns": [
+    "Whether visit_date is registration date or clinical date",
+    "District code list and whether district is a residence or a clinic location",
+    "Small-cell suppression or disclosure-control rule",
+    "How zero-visit days are stored (explicit zero vs absent row)",
+    "Whether clinic opening changes create artificial zeros or gaps",
+    "Actual row count, date range and completeness (not queried)",
+    "Whether access request has been approved and what the request turnaround is",
+    "Refresh completeness and backfill/revision behaviour"
+  ]
+}

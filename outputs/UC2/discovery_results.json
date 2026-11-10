@@ -1,0 +1,286 @@
+{
+  "use_case": "UC2",
+  "as_of": "2026-10-15",
+  "generated_at": "2026-11-10T17:17:01Z",
+  "model": "claude-haiku-5-5",
+  "overall_verdict": "not_feasible",
+  "overall_rationale": "The must need N2 (product-code mapping for the history window) is unmet: no source contains the pre-2024-04-01 codes or a mapping table, and the only name reference holds current codes with non-unique names. Under the calibration rules, an unmet must need makes the overall verdict not_feasible. The other must needs are workable with conditions: N1 (internal daily sales, restricted access, till gap and code break to handle) and N3 (Open-Meteo daily maximum temperature, CC BY 4.0 with attribution, mixed upstream terms, shop coordinates to confirm). The should needs N4 and N5 are partially met. A route to feasibility would be a Retail Operations owner-validated old-to-new code mapping, after which N2 could be re-assessed.",
+  "need_coverage": [
+    {
+      "need_id": "N1",
+      "status": "met_with_conditions",
+      "best_sources": [
+        "internal.sales.daily_by_product"
+      ],
+      "gap": "The till gap 2024-02-05 to 2024-03-10 is missing from the history window, the product-code break needs a crosswalk, and access is restricted; the recent-window system is unconfirmed."
+    },
+    {
+      "need_id": "N2",
+      "status": "unmet",
+      "best_sources": [
+        "internal.sales.products"
+      ],
+      "gap": "No source provides a mapping between pre- and post-2024-04-01 product codes; the products table holds current codes only, and name matching is not unique."
+    },
+    {
+      "need_id": "N3",
+      "status": "met_with_conditions",
+      "best_sources": [
+        "api.open_meteo_archive"
+      ],
+      "gap": "Shop coordinates are unconfirmed (Milan probe point used), full range not fetched, and the upstream C3S commercial terms need confirming."
+    },
+    {
+      "need_id": "N4",
+      "status": "partially_met",
+      "best_sources": [
+        "api.nager_public_holidays"
+      ],
+      "gap": "Hosted-data licence not stated, 2023 and 2025 not probed, Ferragosto and Easter Monday unconfirmed, and no regional holidays."
+    },
+    {
+      "need_id": "N5",
+      "status": "partially_met",
+      "best_sources": [
+        "internal.store.calendar"
+      ],
+      "gap": "Access not tested, is_open source and event completeness undocumented, location unknown, and row count inconsistent with coverage."
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "api.nager_public_holidays",
+      "kind": "public_api",
+      "title": "Nager.Date Public Holidays API (country IT, per year)",
+      "location": "https://date.nager.at/api/v3/PublicHolidays/{year}/IT",
+      "canonical_ref": "api.nager_public_holidays",
+      "need_ids": [
+        "N4"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "verdict": "feasible_with_conditions",
+      "red_flags": [
+        "GOV-OWNER-UNKNOWN",
+        "LIC-UNKNOWN"
+      ],
+      "red_flag_details": [
+        {
+          "code": "LIC-UNKNOWN",
+          "severity": "blocker",
+          "evidence": "Licence evidence is MIT for the Nager.Date software repository (github.com/nager/Nager.Date). The notes say the licence of the hosted API data was not stated, and nagerholidays.com was not allowlisted so it was not read. Commercial use is 'unknown'. Judgement flag: the software licence does not cover the data.",
+          "raised_by": "judgement"
+        },
+        {
+          "code": "GOV-OWNER-UNKNOWN",
+          "severity": "major",
+          "evidence": "ownership.owner null and ownership.steward null; only publisher 'Nager.Date project (GitHub repository nager/Nager.Date)' is recorded. The rule did not raise it, but the record has no accountable owner.",
+          "raised_by": "judgement"
+        }
+      ],
+      "dismissed_rule_flags": [],
+      "conditions": [
+        "Obtain and record the licence of the hosted holiday data (not the MIT software licence) and confirm commercial use before any production use. Owner: project analytics lead with Legal.",
+        "Probe 2023 and 2025 (not yet probed) to confirm the history and recent windows are covered per year.",
+        "Confirm whether Ferragosto (15 Aug) and Easter Monday are returned for IT; the list was truncated in the probe.",
+        "Treat Easter Sunday and other Sunday holidays with a flag so they are not double counted in weekday logic.",
+        "Join as a daily flag; absent dates are non-holidays. Shop-specific or regional holidays are not covered and need another source."
+      ],
+      "who_can_resolve": [
+        "Legal / analytics lead (licence of hosted data)",
+        "Analytics engineer (probe 2023 and 2025, check Ferragosto and Easter Monday)"
+      ],
+      "rationale": "Only a should need (N4) is served, so the LIC-UNKNOWN blocker is a context-level issue. It is removed by the condition of obtaining and recording the data licence before use. Coverage of 2023 and 2025 is unverified, and the owner is unknown, so N4 is partially met."
+    },
+    {
+      "source_id": "api.open_meteo_archive",
+      "kind": "public_api",
+      "title": "Open-Meteo Historical Weather API (reanalysis), daily temperature_2m_max",
+      "location": "https://archive-api.open-meteo.com/v1/archive",
+      "canonical_ref": "api.open_meteo_archive",
+      "need_ids": [
+        "N3"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "verdict": "feasible_with_conditions",
+      "red_flags": [
+        "LIC-ATTRIBUTION",
+        "LIC-MIXED"
+      ],
+      "red_flag_details": [
+        {
+          "code": "LIC-ATTRIBUTION",
+          "severity": "minor",
+          "evidence": "licence.attribution_text 'Weather data by Open-Meteo.com (link required, per licence page)'; open-meteo.com/en/licence states API data are CC BY 4.0.",
+          "raised_by": "rule"
+        },
+        {
+          "code": "LIC-MIXED",
+          "severity": "major",
+          "evidence": "licence.name 'CC BY 4.0 (for API data, as stated by provider); upstream Copernicus C3S terms also listed'; mixed_sources true. The licence page does not map the C3S reanalysis to the archive endpoint.",
+          "raised_by": "rule"
+        }
+      ],
+      "dismissed_rule_flags": [],
+      "conditions": [
+        "Confirm the upstream dataset behind the archive endpoint and that its C3S terms allow commercial use; the commercial use field is 'unknown'.",
+        "Add the attribution 'Weather data by Open-Meteo.com' to any output.",
+        "Pull the full 2023-06-01 to 2026-03-31 range in a staged download; only the start and end ends were probed, so full coverage is unverified.",
+        "Fix the shop's coordinates. The probe used Milan-area coordinates chosen by the profiler; the decisions.md page was not found. Replace the Lisbon register default and set timezone Europe/Rome.",
+        "Filter out the default hourly temperature_2m and shortwave_radiation fields; request only daily temperature_2m_max.",
+        "Check the provisional-versus-final revision policy for recent days; reanalysis may smooth extremes versus station data (not verified)."
+      ],
+      "who_can_resolve": [
+        "Legal (upstream C3S commercial terms)",
+        "Analytics lead (shop coordinates)",
+        "Analytics engineer (staged download, field filter)"
+      ],
+      "rationale": "Daily maximum temperature (must need N3) is available for both windows at the probe ends, with an open licence (CC BY 4.0) that is mixed with Copernicus terms. The conditions are the attribution, confirming the commercial terms, fixing the shop location and checking full coverage. No blocker applies."
+    },
+    {
+      "source_id": "internal.sales.daily_by_product",
+      "kind": "internal",
+      "title": "Daily sales by product (till system), sales.daily_by_product",
+      "location": "azure://valdena-gelato/sales/daily_by_product",
+      "canonical_ref": "sales.daily_by_product",
+      "need_ids": [
+        "N1",
+        "N2"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "verdict": "feasible_with_conditions",
+      "red_flags": [
+        "ACC-RESTRICTED",
+        "GOV-CATALOG-WIKI-CONFLICT",
+        "INT-JOIN-KEY-MISMATCH"
+      ],
+      "red_flag_details": [
+        {
+          "code": "ACC-RESTRICTED",
+          "severity": "major",
+          "evidence": "access.auth_required true; classification 'confidential'; request_process 'Request to Retail Operations'. Not probed. The rule flag is kept: a named owner and process exist, so it is conditional, not a blocker.",
+          "raised_by": "rule"
+        },
+        {
+          "code": "GOV-CATALOG-WIKI-CONFLICT",
+          "severity": "major",
+          "evidence": "Catalog temporal_coverage 2022-01-01 to open end with no gaps mentioned; wiki till_migration_2024 (last edited 2024-03-12) says 'No sales were recorded' and 'sales.daily_by_product has no rows for' 2024-02-05 to 2024-03-10. The wiki also says the recent window's source system is undocumented after the till replacement.",
+          "raised_by": "judgement"
+        },
+        {
+          "code": "INT-JOIN-KEY-MISMATCH",
+          "severity": "major",
+          "evidence": "wiki product_codes_2024 (2024-04-02): from 2024-04-01 codes ending in 'L' were replaced by new codes; 'No mapping table exists'; matching is by name only and 'some names are not unique'. Product codes are re-keyed across the history window.",
+          "raised_by": "judgement"
+        }
+      ],
+      "dismissed_rule_flags": [],
+      "conditions": [
+        "Obtain access via the Retail Operations request process and record the approval before use.",
+        "Treat 2024-02-05 to 2024-03-10 as missing, not zero, and exclude it from means; document the gap in the analysis.",
+        "Confirm with Retail Operations whether the 2025-06 to 2026-03 extract comes from the same till system as the history.",
+        "Build a product-level view only after resolving the 'L' to new code break (owner-validated crosswalk), or aggregate to a product-agnostic daily total for N1.",
+        "Confirm whether units_sold and revenue_eur net off voids, refunds and discounts; this is undocumented.",
+        "Run value-level checks (negatives, zeros, closed days) once access is granted; no sample was read.",
+        "Serve N2 from another source. This table does not provide the mapping."
+      ],
+      "who_can_resolve": [
+        "Retail Operations (access approval, till-system confirmation, void/refund semantics)",
+        "Retail Operations steward (owner-validated code crosswalk)"
+      ],
+      "rationale": "Daily sales are the core data for N1, the only internal source of product-day units and revenue. Access is restricted but has a named owner and request process, so it is conditional. The documented till gap and undocumented code break contradict the catalog and need handling. This source does not meet N2, which is a mapping need."
+    },
+    {
+      "source_id": "internal.sales.products",
+      "kind": "internal",
+      "title": "Product list (current product codes, names, categories)",
+      "location": "azure://valdena-gelato/sales/products",
+      "canonical_ref": "sales.products",
+      "need_ids": [
+        "N2"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "verdict": "not_feasible",
+      "red_flags": [
+        "INT-NO-JOIN-KEY"
+      ],
+      "red_flag_details": [
+        {
+          "code": "INT-NO-JOIN-KEY",
+          "severity": "major",
+          "evidence": "Catalog: 'holds only codes in force after the 2024-04-01 code change', 64 rows, no temporal dimension. Wiki product_codes_2024: 'sales.products lists only the current codes' and no mapping table exists. The historical 'L' codes cannot be linked to the new codes from this table.",
+          "raised_by": "judgement"
+        }
+      ],
+      "dismissed_rule_flags": [],
+      "conditions": [
+        "Use only as a name reference for a manual crosswalk, and only with owner validation of ambiguous names.",
+        "Obtain a true old-to-new code mapping from Retail Operations before N2 can be met."
+      ],
+      "who_can_resolve": [
+        "Retail Operations (owner-validated crosswalk or mapping table)"
+      ],
+      "rationale": "N2 is a must need for the history window, and this table cannot provide the pre-2024-04-01 codes. Name-based matching is not unique and no mapping table exists, so the source cannot serve N2 as proposed. Freshness is also limited (last refreshed 2025-03-31)."
+    },
+    {
+      "source_id": "internal.store.calendar",
+      "kind": "internal",
+      "title": "Shop calendar (opening days, closures, local events)",
+      "location": "azure://valdena-gelato/store/calendar",
+      "canonical_ref": "store.calendar",
+      "need_ids": [
+        "N5",
+        "N1"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "verdict": "feasible_with_conditions",
+      "red_flags": [
+        "ACC-RESTRICTED",
+        "DQ-UNDOCUMENTED-SCHEMA"
+      ],
+      "red_flag_details": [
+        {
+          "code": "ACC-RESTRICTED",
+          "severity": "major",
+          "evidence": "access.auth_required true; classification 'internal'; request_process 'Open to analytics roles'; connection not tested. The rule flag is kept: a process exists but access is not confirmed for this project.",
+          "raised_by": "rule"
+        },
+        {
+          "code": "DQ-UNDOCUMENTED-SCHEMA",
+          "severity": "major",
+          "evidence": "Column descriptions are one line each; is_open 'Source of is_open (manual entry, POS-derived, or other)' is unknown; event_name has no start/end, source or completeness field. The record has no wiki page.",
+          "raised_by": "judgement"
+        }
+      ],
+      "dismissed_rule_flags": [],
+      "conditions": [
+        "Obtain analytics access and sample the table to check is_open and event_name.",
+        "Confirm which city or branch the calendar covers (no location field).",
+        "Resolve the row-count mismatch: about 1500 rows versus roughly 1750 calendar days from 2022-01-01 to the 2026-10-14 export; check for missing dates.",
+        "Confirm the source of is_open and how it is set for the 2024 till-gap days. The wiki does not document this; the claim that it checks the till gap is not supported.",
+        "Note that recent days are refreshed only weekly (last 2026-10-10).",
+        "Treat event_name as incomplete until the owner confirms completeness."
+      ],
+      "who_can_resolve": [
+        "Store Operations (access, is_open source, branch coverage, event completeness, row count)"
+      ],
+      "rationale": "The calendar serves N5, a should need, and the closed-day check for N1, which is context. The access process is named but not tested. The is_open source, event completeness and location are undocumented, so N5 is only partially met. Not a blocker for a should need."
+    }
+  ],
+  "rule_warnings": [],
+  "dataset_links": []
+}
