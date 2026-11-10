@@ -1,0 +1,179 @@
+{
+  "use_case": "UC1",
+  "objective_summary": "Decide whether the Valdena Civic Health Office can (a) prototype a next-day poor-air warning method on public hourly Italian air-quality data for 2004-03-10 to 2005-04-04, and (b) build the production model on its own station, traffic and clinic data for 2024-01-01 to 2025-12-31. The plan must establish which datasets exist, their grain, coverage and legal status, which cannot be used (expired vendor feed, patient-level records out of scope), and which red flags must be resolved before profiling.",
+  "need_plans": [
+    {
+      "need_id": "N1",
+      "interpretation": "Hourly concentrations of NO2 and/or PM2.5 (and ideally PM10) at urban monitoring stations in an Italian city, covering the prototype window 2004-03-10 to 2005-04-04 and the production window 2024-01-01 to 2025-12-31, with station identifier, timestamp and unit. The prototype needs a public hourly series; the production series must be the city's own station data.",
+      "internal_queries": [
+        "air quality hourly station NO2 PM2.5 Valdena",
+        "centralina qualità dell'aria oraria",
+        "city monitoring station feed production 2024 2025",
+        "ARPA station readings legacy extract",
+        "air pollution monitoring network data request status"
+      ],
+      "external_data_hints": [
+        "Prototype: public hourly air-quality readings for one Italian city (regional environmental agency / ARPA-type portal, EEA Airbase-type archive, or a national open-data repository). Must cover 2004-03-10 to 2005-04-04 at hourly grain with station id and pollutant units; check that the 2004-2005 series is actually hourly and not daily aggregates.",
+        "Production fallback only if the city station feed is delayed: a regional environmental agency open-data portal for 2024-2025 hourly readings. Trap: station-level values from a different municipality, or validated vs. provisional data for the same hours."
+      ],
+      "register_ids": [
+        "policy.open_data_links"
+      ],
+      "acceptance_criteria": [
+        "Series covers every hour of 2004-03-10 to 2005-04-04 for at least one urban station, with gaps quantified",
+        "Grain is hourly or finer; timestamps have a stated time zone (UTC or Europe/Rome with DST handling)",
+        "Pollutant units and measurement method are documented (e.g. µg/m3)",
+        "Licence read at the source and recorded; prototype use only if licence allows it and no non-commercial restriction blocks it",
+        "For production: city's own station data covers 2024-01-01 to 2025-12-31 at hourly grain and the station location is known"
+      ],
+      "likely_pitfalls": [
+        "Daily or monthly aggregates published under an hourly-looking dataset name",
+        "Provisional vs validated readings for the same hours; later revisions overwrite earlier values",
+        "Station codes that change or are retired between 2004 and 2025 (renamed or migrated stations)",
+        "Units differ between pollutants or between legacy and current systems",
+        "Gaps during maintenance coded as zeros"
+      ]
+    },
+    {
+      "need_id": "N2",
+      "interpretation": "Hourly vehicle counts or traffic volume on roads within a short distance of each monitoring station, for the production window 2024-01-01 to 2025-12-31. No prototype window is required for this need.",
+      "internal_queries": [
+        "traffic counts hourly ZTL loop sensors",
+        "traffic flow data road sensors city",
+        "mobilità veicoli conteggi orari",
+        "traffic camera counts station proximity",
+        "transport department traffic feed 2024"
+      ],
+      "external_data_hints": [
+        "Municipal or regional mobility / transport open-data portal publishing hourly vehicle counts by road-sensor id, with coordinates to link sensors to air-quality stations within a stated radius. Must cover 2024-2025 hourly. Trap: daily average daily traffic (ADT) tables or sensors on motorways far from the stations."
+      ],
+      "register_ids": [],
+      "acceptance_criteria": [
+        "Hourly counts for 2024-01-01 to 2025-12-31 for at least one sensor within a documented distance of a monitoring station",
+        "Sensor coordinates or road segment ids available so the link to stations is reproducible",
+        "Count definition (vehicles per hour, per direction) documented; missing hours identified",
+        "Licence and any production use approval confirmed; production use requires Legal sign-off"
+      ],
+      "likely_pitfalls": [
+        "Sensor outages recorded as zero traffic",
+        "Sensor relocation or replacement changing the series without a new id",
+        "Counts for one direction only presented as total",
+        "Mixing ADT or annual averages with hourly counts",
+        "No register source exists for this need; production use of any external traffic dataset needs Legal sign-off"
+      ]
+    },
+    {
+      "need_id": "N3",
+      "interpretation": "Hourly air temperature and relative humidity for the city location used by the client, covering the prototype window 2004-03-10 to 2005-04-04 and the production window 2024-01-01 to 2025-12-31. The city location is an assumption to be confirmed by a human (proposed: Milan, approx. 45.46 N, 9.19 E, Po Valley, justified by Italian urban air-quality exposure; not stated in any source).",
+      "internal_queries": [
+        "weather temperature humidity hourly city",
+        "meteo stazione temperatura umidità",
+        "climate reanalysis historical weather",
+        "weather covariate for air model",
+        "observations from weather station legacy"
+      ],
+      "external_data_hints": [
+        "Reanalysis or station-based hourly temperature and relative humidity from a national meteorological service or open-data portal near the chosen city, for 2004-2005 and 2024-2025. Trap: a reanalysis grid cell is not a station observation; check the grid resolution and whether timestamps are UTC."
+      ],
+      "register_ids": [
+        "api.open_meteo_archive"
+      ],
+      "acceptance_criteria": [
+        "Hourly temperature_2m and relative_humidity_2m (or equivalent) returned for the full prototype and production windows at the assumed coordinates",
+        "Coordinates recorded in decisions.md as an assumption, not as a fact about the client",
+        "Timezone set explicitly; default probe range (2014-01-03) not used as evidence of coverage",
+        "Licence terms at terms_url read and recorded; use allowed for prototyping and production under the register"
+      ],
+      "likely_pitfalls": [
+        "Register default coordinates are Lisbon (38.72, -9.14) and must not be used",
+        "Default query requests temperature and shortwave radiation only; relative humidity must be requested explicitly",
+        "Reanalysis (model) values differ from station observations, especially in urban areas",
+        "The expired AtmosData Pro vendor feed (contract ended 2025-12-31, key revoked 2026-01-01, no renewal) must not be used for any window",
+        "Timestamps in UTC vs local time shift daily clinic counts by one hour or more"
+      ]
+    },
+    {
+      "need_id": "N4",
+      "interpretation": "Daily counts of respiratory clinic visits by district for the production window 2024-01-01 to 2025-12-31. Counts only; no patient identifiers.",
+      "internal_queries": [
+        "respiratory clinic visits daily district",
+        "clinic attendance counts respiratorie",
+        "ambulatorio visite giornaliere distretto",
+        "health office visits aggregated by district 2024",
+        "patient visit extract daily summary"
+      ],
+      "external_data_hints": [],
+      "register_ids": [],
+      "acceptance_criteria": [
+        "Daily counts for every day of 2024-01-01 to 2025-12-31 by district, with explicit zero or missing-day handling",
+        "Counts meet the client's small-cell suppression rule, and the district code list is stated",
+        "Clinic extract is confirmed as aggregated, not patient-level, before use"
+      ],
+      "likely_pitfalls": [
+        "Visit dates recorded at registration vs. clinical date",
+        "Clinic opening changes or closures appear as zero visits",
+        "District boundaries or codes change between years",
+        "Small counts in a district and day could identify individuals if not suppressed",
+        "Only internal data can serve this need"
+      ]
+    },
+    {
+      "need_id": "N5",
+      "interpretation": "Individual clinic visit events with timestamps and clinical attributes, for the production window. Listed as could-have; the brief places patient-level records out of scope.",
+      "internal_queries": [
+        "patient visit event records respiratory",
+        "patient-level clinic data extract",
+        "EHR visit log individual",
+        "consent patient data clinic sharing",
+        "pseudonymised visit records"
+      ],
+      "external_data_hints": [],
+      "register_ids": [],
+      "acceptance_criteria": [
+        "If pursued at all: a documented lawful basis and consent or governance approval for patient-level use is on file before any extract is made",
+        "Otherwise record as excluded and do not extract"
+      ],
+      "likely_pitfalls": [
+        "The brief says the clinic may only share daily counts by district; patient-level data is out of scope",
+        "Consent captured late or not at all",
+        "Re-identification risk from combined fields such as date, district and age band"
+      ]
+    },
+    {
+      "need_id": "N6",
+      "interpretation": "National annual estimates of deaths attributable to PM2.5 for Italy, covering years overlapping the prototype (2004-2005) and production (2024-2025) windows. Context only.",
+      "internal_queries": [
+        "PM2.5 deaths national estimate annual",
+        "mortality attributable air pollution Italy",
+        "burden of disease air pollution context",
+        "mortalità PM2.5 Italia annuale"
+      ],
+      "external_data_hints": [
+        "National statistics office or environment agency publication, or a peer-reviewed burden-of-disease open dataset (for example GBD-type or WHO-type annual country estimates), giving annual Italian PM2.5-attributable deaths for 2004-2005 and 2024-2025. Trap: estimates modelled by different methods across years, or deaths from all causes rather than PM2.5-attributable."
+      ],
+      "register_ids": [],
+      "acceptance_criteria": [
+        "Annual Italian figures for at least one year in each window, with method and source version stated",
+        "Licence read at source; context use only unless Legal approves more",
+        "Series name makes clear whether it is attributable deaths or total deaths"
+      ],
+      "likely_pitfalls": [
+        "Estimates revised retrospectively; use the version date",
+        "Modelled estimates presented as observed deaths",
+        "Different PM2.5 exposure definitions across editions",
+        "Context only; not a model input without review"
+      ]
+    }
+  ],
+  "open_questions": [
+    "Confirm the assumed city location for the weather coordinates (proposed Milan, approx. 45.46 N, 9.19 E). No source names the client's city; the decision must be recorded in decisions.md.",
+    "Which public hourly air-quality dataset will be used for the 2004-03-10 to 2005-04-04 prototype, and is its licence acceptable for prototyping? No such dataset is in the register.",
+    "When will the city's own station data (N1 production) and traffic counts (N2) be delivered, and who owns the request? Is there a known station-to-sensor mapping?",
+    "Is there any external traffic dataset for 2024-2025 that Legal would approve for production use? The register has none for N2.",
+    "Does the clinic's daily count extract (N4) already exist, and does it meet the district suppression rule?",
+    "N5 patient-level records: is there a lawful basis and consent on file? The brief places them out of scope, so the default recommendation is to exclude them.",
+    "The AtmosData Pro vendor feed has an expired contract (2022-01-01 to 2025-12-31) with renewal waiting on Procurement. Does the client need it for production? If so, it cannot be used until a signed renewal exists.",
+    "The Nager.Date holiday API is tagged for UC1 but no need uses holiday data. Should a holiday covariate be added?",
+    "Is hourly reanalysis data from Open-Meteo acceptable as the production temperature and humidity source, or does the client require station observations?"
+  ]
+}

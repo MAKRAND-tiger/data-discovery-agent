@@ -1,0 +1,84 @@
+{
+  "flags": {
+    "api.open_meteo_archive": [
+      {
+        "code": "LIC-ATTRIBUTION",
+        "evidence": "Licence 'CC BY 4.0 (for API data, as stated by the operator); upstream reanalysis terms also apply' requires attribution",
+        "raised_by": "rule:rule_licence"
+      },
+      {
+        "code": "LIC-MIXED",
+        "evidence": "Record states that parts come from upstream providers with different terms",
+        "raised_by": "rule:rule_licence"
+      }
+    ],
+    "internal.airq.station_readings": [
+      {
+        "code": "ACC-RESTRICTED",
+        "evidence": "auth_required=True, classification=internal, process='Request to the Environment Monitoring Unit (catalog access.request_process). No delivery date recorded.'",
+        "raised_by": "rule:rule_access"
+      }
+    ],
+    "internal.clinic.resp_visits_daily": [
+      {
+        "code": "ACC-RESTRICTED",
+        "evidence": "auth_required=True, classification=internal, process='Request to Clinical Analytics (catalog access.request_process). Location azure://valdena-health/clinic/resp_visits_daily. Not queried by this profiler; access not verified.'",
+        "raised_by": "rule:rule_access"
+      }
+    ],
+    "internal.traffic.hourly_counts": [
+      {
+        "code": "ACC-RESTRICTED",
+        "evidence": "auth_required=True, classification=internal, process='Request to the Mobility Office (catalog access.request_process). No delivery date recorded.'",
+        "raised_by": "rule:rule_access"
+      }
+    ],
+    "link.data_open_air_chicago_hour_aggre_d4970b": [
+      {
+        "code": "LIC-UNKNOWN",
+        "evidence": "No licence established. Evidence field: 'Not read. inspect_dataset_link on https://catalog.data.gov/dataset/open-air-chicago-hour-aggregations returned DOMAIN_NOT_ALLOWLISTED for host catalog.data.gov.'",
+        "raised_by": "rule:rule_licence"
+      },
+      {
+        "code": "ACC-UNREACHABLE",
+        "evidence": "Record states the source could not be reached or restored",
+        "raised_by": "rule:rule_access"
+      }
+    ],
+    "link.europa_sdg_11_52_099aa6": [
+      {
+        "code": "LIC-UNKNOWN",
+        "evidence": "No licence established. Evidence field: 'No licence statement was found. The inspect_dataset_link result gives no licence. probe_url on https://ec.europa.eu/eurostat/about/policies/copyright redirected to an EU Login sign-in page, and no licence text was readable there. Terms not established.'",
+        "raised_by": "rule:rule_licence"
+      },
+      {
+        "code": "COV-PARTIAL-WINDOW",
+        "evidence": "prototype 2004-03-10..2005-04-04 covered 24% (record 2005-01-01..2023-12-31); production 2024-01-01..2025-12-31 covered 0% (record 2005-01-01..2023-12-31)",
+        "raised_by": "rule:rule_temporal_coverage"
+      },
+      {
+        "code": "DQ-METADATA-CONTRADICTION",
+        "evidence": "declared has_missing_values='no (missing_cells = 0 in the JSON-stat summary)', but quality_notes says: \"No missing-value sentinel (-200, -999 or similar) documented in what was read. Only the summary's missing_cells=0 was available; cell values were not sampled, so sentinel absence is not verified at va\" (matched 'sentinel')",
+        "raised_by": "rule:rule_metadata_contradiction"
+      }
+    ],
+    "link.uci_360": [
+      {
+        "code": "LIC-ATTRIBUTION",
+        "evidence": "Licence 'CC BY 4.0' requires attribution",
+        "raised_by": "rule:rule_licence"
+      },
+      {
+        "code": "FRS-STALE",
+        "evidence": "Data ends 2005-04-04, more than 5 years before the as-of date 2026-10-15",
+        "raised_by": "rule:rule_temporal_coverage"
+      },
+      {
+        "code": "DQ-METADATA-CONTRADICTION",
+        "evidence": "declared has_missing_values='no', but documentation says: \"Missing values are tagged with -200 value.\" (matched 'Missing values')",
+        "raised_by": "rule:rule_metadata_contradiction"
+      }
+    ]
+  },
+  "warnings": []
+}

@@ -1,0 +1,368 @@
+{
+ "agent": "profiler__internal.store.calendar",
+ "system": "# Operating rules (all discovery agents)\n\nYou are one agent in a data-discovery system. The goal is to locate, catalog and assess the feasibility of data sources for a business problem **before any pipeline is built**.\n\n- **Metadata first, then a small sample, never the whole dataset.** Work from catalog entries, wiki pages, API metadata, landing pages, descriptors and terms pages. You may read a capped sample of a data file with `sample_data_file` to check structure and quality, but never try to download a whole dataset. Do not copy personal data (names, emails, addresses, ids) into your output.\n- **Provenance.** Every claim you make about a source must be traceable to a tool call (tool name and argument), a URL, a catalog field or a wiki page id.\n- **Unknown stays unknown.** If no source states a licence, owner, refresh cadence, consent or coverage date, record null or \"unknown\" and say so. Never infer one from what is typical.\n- **Guardrails are findings.** A refused host (DOMAIN_NOT_ALLOWLISTED), a timeout, a 401/403, an expired agreement or a restricted table is evidence to record. Do not look for another route to the same data.\n- **Documentation beats catalog metadata when it is more specific or more recent.** When they disagree, record both, with dates.\n- **Be economical.** Use the fewest tool calls that answer the question, and run independent calls in parallel. Stop when you have enough evidence, and finish by calling your submit tool.\n\n\n# Role: Profiler\n\nYou profile **one** candidate source and return a **catalog record**: an auto-generated summary of schema, freshness, ownership, licence, access and documented quality issues, with provenance for every claim.\n\nWhat to gather, by kind:\n- **internal**: `get_catalog_entry` (all fields), then every wiki backlink and related doc with `read_wiki_page`. Record catalog vs wiki disagreements in `quality_notes`, quoting both sides with dates. Internal sources have `licence.name = \"internal\"` and `commercial_use = \"not_applicable\"`.\n- **public_api**: `list_external_register` for the endpoint, then one or two small `call_public_api` probes to check that it responds and which period it covers (probe both ends of the needed windows if coverage is in doubt). Read the provider's terms with `probe_url` on `terms_url` and record the licence and its exact source.\n- **vendor_feed**: read the register entry. Do not try to call it. Record the agreement status and detail in `licence.agreement_status`, and set `access.reachable` to false when credentials are revoked or not issued.\n- **dataset_link** (any URL a human supplied; the link can point anywhere):\n  1. `inspect_dataset_link` on the link. It tells you the link type and gives metadata, licence evidence, files and next steps.\n  2. By link type:\n     - `uci_dataset_page`: read `metadata` (declared flags, notes, variables). If `data_url` exists, `sample_data_file` on it. Otherwise the data is only in an archive: describe the schema from the metadata and say the sample was not possible.\n     - `landing_page` (portals such as Kaggle, Zenodo, data.gov, CKAN or Hugging Face): read `jsonld_datasets` first (licence, dates, coverage, distribution), then `meta_description` and `text_start`. Pick the most specific data file from the distribution or `data_links` and `sample_data_file` it, if its host is allowlisted. If downloads need a login or subscription, set `access.auth_required = true`.\n     - `frictionless_datapackage`: `summarize_datapackage` with a `field_filter` for the use case's geography (e.g. the country code prefix the use case needs). Never sample the large CSVs it lists.\n     - `json_stat`: read the summary (dimensions, time, geo codes, warnings).\n     - `data_file`: the sample profile is already in the result. Find documentation for the file (repository README, parent page) if you can, using `probe_url`.\n     - `json_api`: use the shape and dates found. One more call at most.\n     - `login_wall` / `unreachable` / a refused host: record `access.reachable = false` (or `auth_required = true` for a login wall), say which host or credential would be needed, and stop.\n  3. Licence: use the licence from `inspect_dataset_link` and say where it was found (`found_in`). If none was found, look once on the provider's terms page with `probe_url`. Otherwise record null. Never assume a portal's usual licence.\n  4. Copy `canonical_ref` from `inspect_dataset_link` into the record.\n  5. Put what the **sample** showed in `sample_findings`, naming the column: sentinel values, negative quantities, zero shares, odd value sets (country spellings), date formats, personal-looking columns. A sample's date range is the range of the first rows only: take `temporal.start/end` from the documentation, not from the sample, unless the sample is the whole file.\n  6. Decide what the data **is**: entity, grain, period, geography, population. The Risk Assessor judges fit from this.\n  7. **Numeric sentinels.** Search the documentation (notes, variable descriptions, missing-value fields) for numeric markers of missing data, above all `-200` and `-999` (also `-9999`), written as `-200` or `-200.0`. If the documentation says missing values are coded with one of these, treat it as a **missing-value anomaly**: list it in `quality_notes` with the quoted sentence, and count those cells as missing (never as real measurements) in `sample_findings` and in `non_missing_share`. If the declared `has_missing_values` is \"no\" while the documentation describes such a marker, say so explicitly: it is a contradiction between the metadata and the documentation, not a clean column. Check every numeric column in the sample for these values, including float-formatted ones such as `-200.0`.\n\nField rules:\n- `temporal.start` / `temporal.end` are ISO dates (YYYY-MM-DD) of the **data period**. Use `end = null` only for sources that are still updating. `grain` is one of the schema's values.\n- `access.approx_size_bytes`: the largest file or table size you found stated (descriptor bytes, content-length, row counts x width if stated), else null.\n- `access.reachable = false` if the link itself (or its metadata) could not be reached, the host was refused, or the store cannot be restored. A data file that timed out or is an archive that cannot be sampled does NOT make the source unreachable when its metadata was read; note it in `quality_notes`.\n- `licence.mixed_sources = true` when different fields or files come from upstream providers with different terms.\n- `spatial.code_system`: how places are identified (ISO2, ISO3, free-text country names, Eurostat codes, ...). This decides whether joins will work.\n- `schema.documented`: \"structured\" when fields come with names and types, \"free_text_only\" when they are only described in prose, \"none\" otherwise.\n- At least three `provenance` entries. Put everything you could not establish in `unknowns`.\n",
+ "messages": [
+  {
+   "role": "user",
+   "content": "<use_case_spec>\n{\n \"id\": \"UC2\",\n \"title\": \"Ice-cream sales: do hot days and public holidays raise our sales?\",\n \"client\": \"Valdena Gelato Shop (fictional, northern Italy)\",\n \"as_of\": \"2026-10-15\",\n \"geography\": {\n  \"primary\": [\n   \"IT\"\n  ],\n  \"secondary\": []\n },\n \"windows\": [\n  {\n   \"id\": \"history\",\n   \"start\": \"2023-06-01\",\n   \"end\": \"2025-05-31\",\n   \"purpose\": \"Two summers of daily sales, to see how weather and holidays affect them.\"\n  },\n  {\n   \"id\": \"recent\",\n   \"start\": \"2025-06-01\",\n   \"end\": \"2026-03-31\",\n   \"purpose\": \"The most recent months, to check that the pattern still holds.\"\n  }\n ],\n \"needs\": [\n  {\n   \"id\": \"N1\",\n   \"name\": \"Daily ice-cream sales by product\",\n   \"priority\": \"must\",\n   \"min_grain\": \"daily\",\n   \"windows\": [\n    \"history\",\n    \"recent\"\n   ]\n  },\n  {\n   \"id\": \"N2\",\n   \"name\": \"Mapping of product codes before and after the 2024 code change\",\n   \"priority\": \"must\",\n   \"min_grain\": \"static\",\n   \"windows\": [\n    \"history\"\n   ]\n  },\n  {\n   \"id\": \"N3\",\n   \"name\": \"Daily maximum temperature\",\n   \"priority\": \"must\",\n   \"min_grain\": \"daily\",\n   \"windows\": [\n    \"history\",\n    \"recent\"\n   ]\n  },\n  {\n   \"id\": \"N4\",\n   \"name\": \"Public holidays in Italy\",\n   \"priority\": \"should\",\n   \"min_grain\": \"daily\",\n   \"windows\": [\n    \"history\",\n    \"recent\"\n   ]\n  },\n  {\n   \"id\": \"N5\",\n   \"name\": \"Shop opening days and local events\",\n   \"priority\": \"should\",\n   \"min_grain\": \"daily\",\n   \"windows\": [\n    \"history\",\n    \"recent\"\n   ]\n  }\n ]\n}\n</use_case_spec>\n\n<candidate>\n{\n \"source_id\": \"internal.store.calendar\",\n \"kind\": \"internal\",\n \"title\": \"Shop calendar (opening days, closures, local events)\",\n \"need_ids\": [\n  \"N5\",\n  \"N1\"\n ],\n \"target_windows\": [\n  \"history\",\n  \"recent\"\n ],\n \"why_relevant\": \"Only internal record of is_open per day, needed to separate closed days from zero-sales days and to check the till-migration gap; event_name is the only internal events field.\",\n \"found_via\": \"search 'opening hours shop calendar closures...', 'local events eventi comune calendar', 'holiday calendar Italy festivi'; get_catalog_entry\",\n \"suspected_issues\": [\n  \"No wiki backlinks: no documentation page describes this calendar's maintenance or accuracy.\",\n  \"Refresh is weekly (last 2026-10-10); steward Elena Russo, Store Operations.\",\n  \"event_name has no start/end or source fields; event list likely incomplete (no evidence either way in catalog).\",\n  \"Catalog has no location field, so it cannot confirm which city/branch it covers (Valdena branch list not found).\"\n ],\n \"location\": \"azure://valdena-gelato/store/calendar\",\n \"canonical_ref\": \"store.calendar\"\n}\n</candidate>\n\nProfile this one source and call submit_catalog_record."
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "id": "toolu_bdrk_01WcAJApmecpkEE6VeA9gFsT",
+     "input": {
+      "entry_id": "internal.store.calendar"
+     },
+     "name": "get_catalog_entry",
+     "type": "tool_use"
+    },
+    {
+     "id": "toolu_bdrk_01JupUhsRKNh5VdLxUFeCvme",
+     "input": {
+      "query": "shop calendar opening days closures local events",
+      "top_k": 6
+     },
+     "name": "search_internal_catalog",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01WcAJApmecpkEE6VeA9gFsT",
+     "content": "{\"source_id\": \"internal.store.calendar\", \"entry\": {\"id\": \"store.calendar\", \"display_name\": \"Shop calendar\", \"description\": \"Opening days, closures and local events for the shop.\", \"domain\": \"Operations\", \"owner\": \"Store Operations\", \"steward\": \"Elena Russo\", \"status\": \"active\", \"classification\": \"internal\", \"contains_pii\": false, \"grain\": \"daily\", \"temporal_coverage\": {\"start\": \"2022-01-01\", \"end\": null}, \"refresh_cadence\": \"weekly\", \"last_refreshed\": \"2026-10-10\", \"location\": \"azure://valdena-gelato/store/calendar\", \"access\": {\"method\": \"warehouse_sql\", \"request_process\": \"Open to analytics roles\"}, \"row_count_approx\": 1500, \"columns\": [{\"name\": \"calendar_date\", \"type\": \"date\", \"description\": \"Day\", \"pii\": false}, {\"name\": \"is_open\", \"type\": \"boolean\", \"description\": \"Whether the shop was open\", \"pii\": false}, {\"name\": \"event_name\", \"type\": \"string\", \"description\": \"Local event that day, if any\", \"pii\": false}]}, \"wiki_backlinks\": [], \"catalog_exported_at\": \"2026-10-14T06:00:00Z\"}"
+    },
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01JupUhsRKNh5VdLxUFeCvme",
+     "content": "{\"query\": \"shop calendar opening days closures local events\", \"hits\": [{\"type\": \"catalog_entry\", \"id\": \"store.calendar\", \"source_id\": \"internal.store.calendar\", \"title\": \"Shop calendar\", \"score\": 13.44, \"snippet\": \"store calendar Shop calendar Opening days, closures and local events for the shop. Operations calendar_date Day is_open Whether the shop was open event_name Local event that day, if any…\"}, {\"type\": \"wiki_page\", \"id\": \"till_migration_2024\", \"source_id\": null, \"title\": \"Till system replacement (2024)\", \"score\": 1.2, \"snippet\": \"…-05 and 2024-03-10. - No sales were recorded in that period. Treat those days as missing, not as zero sales. - `sales.daily_by_product` has no rows for those days.…\"}], \"note\": null}"
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "signature": "CAQSiAcKEggTEAEYAjgBQgh0aGlua2luZxIM+x94uBzV2VZJCNHzGgyCzWsFUiJqPsQStOAiMCWmZkQkuAA0vXHi4sCl/hNUdlqbzPspBvfIzRoHtBxy9G/SEZ5eSw5RnkxUAGRjYiqjBtGE/yKgasjzMsI6Q4f30dcy6vDoCsdqL72ULHZhFxkVB+pNZzVfgKqQrDtkyAVAH5uMkXIV8qAmC6ew3Igek7c7fCu1fRn0zW17GtLBnAKnVTzOwfT8gxLFIVgn3WQ9unqVwLRVf1h98K3XWvhgwyIjekCWBMjIqZ58Jv4I4VY6+TfgoHAq6R+x/eS9K2b4GDkiECb7qg8Yu+9TfDgigxHF7zcXCp8d26dv84IExymGE5vgFlEscsfJkavJsnZCrH0Og5ns6fe99oqn/k2WGClNh/Cru+wsDaclCfpZ4Fb3qRxOK6QPVmx8RV6O6qnvxZRZcv0i42ernRXvHFvidjWxI3g+2v1taKf/B6NWFv0u08UPB9GXSNi0b9Lot2EmoyQ54bRCVdk2z83QTRNXI7jnWakGckCv20yCrCav8gXK5o8ALcxLJN394sm1ZGTx24FfF2CiI+tXa+VZxRtw/177QsjDk38EZPrfBPhbpVhIjLjJpR6flHbzD9HpnRuRb4+m0Shp4ISKF0CFER++kSckJ3xcJTWkgCnRcHeFuj0ProCC/JARFd9xyOR6SEozpIdMOiSQuR23Zyj87B0oBHDiaf6LQtv/zfxkzXKBf56TKhOb5MxxQohI7mBTwEX5o0Cz/KVVGWmg6Cun3VoISEyjorZrLzCF9UUKBCplqcvhV/R9w4e4w43YkINbraBLVPSEvwfWbcpKIwEgJ8lMM7BPovBicueRZD+1LcQ2kWMkSxiVOuLsR/v8UqZAjnbB1GbcftlDp6nvjVTKzpmPe2PzhKG6QJDjwcPtR3mH/RqZfp3dV3cdDlxqGxAjChz0s1Yx/2nkOHPSzoBHG1HlQEJb1SPMgG/lOVPAdwOpti4cmdBGOJZK+lD384jXNLAQ0AXlDE+Xx7ituzsXCaNQFJt1pW5a2gOZZo78ak1dP0mz1k6/Ccj9h7buHXFRLONDi7cO/j85bb8Fq0iimMWhvP65oa/0cvbIXfhqcx1d087SvXBDBYqY4yvizAWgIrM71GJss69ZXvEC3OxvgCdXEKVfVUKXv24k/LtYMRmhgMWhCz/fGAE=",
+     "thinking": "",
+     "type": "thinking"
+    },
+    {
+     "id": "toolu_bdrk_01XESZkcxqwZkkYiqmzsVod6",
+     "input": {
+      "page_id": "till_migration_2024"
+     },
+     "name": "read_wiki_page",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01XESZkcxqwZkkYiqmzsVod6",
+     "content": "{\"page_id\": \"till_migration_2024\", \"title\": \"Till system replacement (2024)\", \"owner\": \"Retail Operations\", \"last_edited\": \"2024-03-12\", \"body\": \"# Till system replacement (2024)\\n- The till system was replaced between 2024-02-05 and 2024-03-10.\\n- No sales were recorded in that period. Treat those days as missing, not as zero sales.\\n- `sales.daily_by_product` has no rows for those days.\"}"
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "signature": "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",
+     "thinking": "",
+     "type": "thinking"
+    },
+    {
+     "id": "toolu_bdrk_01TmCnDcLajWqFvKqr7f2Bib",
+     "input": {
+      "source_id": "internal.store.calendar",
+      "kind": "internal",
+      "title": "Shop calendar (opening days, closures, local events)",
+      "summary": "Internal daily calendar of the Valdena shop with one row per calendar day, a boolean is_open flag and a free-text event_name for local events. Catalog states temporal coverage from 2022-01-01 with no end date and a weekly refresh; approximate row count is 1500. The record was read from the catalog only: no sample was taken because the store is reachable only via warehouse SQL for analytics roles, and no wiki page documents the calendar itself.",
+      "schema": {
+       "documented": "structured",
+       "field_count": 3,
+       "fields": [
+        {
+         "name": "calendar_date",
+         "type": "date",
+         "description": "Day",
+         "pii": false
+        },
+        {
+         "name": "is_open",
+         "type": "boolean",
+         "description": "Whether the shop was open",
+         "pii": false
+        },
+        {
+         "name": "event_name",
+         "type": "string",
+         "description": "Local event that day, if any",
+         "pii": false
+        }
+       ],
+       "notes": "Column descriptions are one line each; no units, no source or maintenance description, no location/branch field."
+      },
+      "temporal": {
+       "start": "2022-01-01",
+       "end": null,
+       "grain": "daily",
+       "metadata_last_updated": "2026-10-10",
+       "open_ended": true,
+       "refresh_cadence": "weekly"
+      },
+      "spatial": {
+       "coverage": [
+        "IT"
+       ],
+       "code_system": "free-text event names; no geographic code or branch field",
+       "notes": "Catalog location is an Azure path for the Valdena shop calendar; the catalog does not state the city or branch covered, so local-event relevance to the shop's location is unconfirmed."
+      },
+      "ownership": {
+       "owner": "Store Operations",
+       "publisher": null,
+       "steward": "Store Operations steward (named individual in catalog)"
+      },
+      "licence": {
+       "name": "internal",
+       "agreement_status": null,
+       "attribution_text": null,
+       "commercial_use": "not_applicable",
+       "evidence": "get_catalog_entry internal.store.calendar: classification 'internal'",
+       "mixed_sources": false,
+       "url": null
+      },
+      "access": {
+       "method": "warehouse_sql",
+       "auth_required": true,
+       "reachable": null,
+       "classification": "internal",
+       "request_process": "Open to analytics roles (catalog access.request_process). Not tested: no connection attempted.",
+       "approx_size_bytes": null
+      },
+      "declared_metadata": {
+       "status": "active",
+       "contains_pii": false,
+       "grain": "daily",
+       "refresh_cadence": "weekly",
+       "row_count_approx": 1500,
+       "classification": "internal"
+      },
+      "documentation_excerpts": [
+       "Opening days, closures and local events for the shop. (catalog description)",
+       "Whether the shop was open (is_open column description)",
+       "Local event that day, if any (event_name column description)",
+       "Treat those days as missing, not as zero sales. (wiki till_migration_2024, body, last_edited 2024-03-12; refers to sales.daily_by_product, not to this calendar)"
+      ],
+      "quality_notes": [
+       "Row count vs coverage: row_count_approx 1500 does not match a daily calendar from 2022-01-01 to the catalog export date 2026-10-14 (about 1,750 calendar days). Either about 250 days are missing or the row count is stale; unverified.",
+       "Till-migration gap: the candidate's claim that this calendar is needed to check the till-migration gap is not supported by documentation. The only wiki page on the migration (till_migration_2024, last edited 2024-03-12) says gap days (2024-02-05 to 2024-03-10) are missing in sales.daily_by_product and says nothing about the calendar; is_open for those days is not documented.",
+       "No wiki backlinks: no page describes how is_open or event_name are maintained, sourced or validated.",
+       "event_name has no start/end, source, or confidence fields; event list completeness is unknown.",
+       "No location/branch field: cannot confirm the calendar covers the Valdena shop's city/branch (candidate's own suspicion, confirmed as undocumented).",
+       "Refresh: weekly with last refresh 2026-10-10, so recent days are updated only weekly; catalog exported 2026-10-14.",
+       "Calendar coverage of the history window (2023-06-01 to 2025-05-31) and recent window (2025-06-01 to 2026-03-31) is implied by temporal_coverage start 2022-01-01 and open end, but not verified by sample."
+      ],
+      "provenance": [
+       {
+        "claim": "Source is an internal catalog entry, owner Store Operations, status active, daily grain, classification internal, no PII",
+        "evidence": "get_catalog_entry internal.store.calendar"
+       },
+       {
+        "claim": "Temporal coverage 2022-01-01 with no end date; weekly refresh; last refreshed 2026-10-10; approx 1500 rows",
+        "evidence": "get_catalog_entry internal.store.calendar (temporal_coverage, refresh_cadence, last_refreshed, row_count_approx)"
+       },
+       {
+        "claim": "Access is warehouse_sql, open to analytics roles; not tested",
+        "evidence": "get_catalog_entry internal.store.calendar (access)"
+       },
+       {
+        "claim": "No wiki page documents this calendar; the only related wiki page covers the 2024 till migration and refers to sales.daily_by_product",
+        "evidence": "get_catalog_entry backlinks empty; search_internal_catalog 'shop calendar opening days closures local events'; read_wiki_page till_migration_2024"
+       },
+       {
+        "claim": "Till migration gap 2024-02-05 to 2024-03-10 is documented for sales, not the calendar",
+        "evidence": "read_wiki_page till_migration_2024"
+       }
+      ],
+      "unknowns": [
+       "Whether the store was actually open on each day (no sample or data read)",
+       "Whether row count 1500 is current or stale; actual row count and date gaps",
+       "Which city or branch the calendar covers",
+       "Who curates event_name entries and how complete the event list is",
+       "Source of is_open (manual entry, POS-derived, or other)",
+       "Whether is_open is set for the 2024 till-migration gap days",
+       "Whether analytics access is granted to this project; connection not tested",
+       "Data sample and column types beyond catalog descriptions"
+      ],
+      "access_note_placeholder": "unused"
+     },
+     "name": "submit_catalog_record",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01TmCnDcLajWqFvKqr7f2Bib",
+     "is_error": true,
+     "content": "Submission rejected. Fix these and call it again:\n- <root>: Additional properties are not allowed ('access_note_placeholder' was unexpected)"
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "id": "toolu_bdrk_01Rj8cWowb6BAGSvP6ZMMu4Y",
+     "input": {
+      "source_id": "internal.store.calendar",
+      "kind": "internal",
+      "title": "Shop calendar (opening days, closures, local events)",
+      "summary": "Internal daily calendar of the Valdena shop with one row per calendar day, a boolean is_open flag and a free-text event_name for local events. Catalog states temporal coverage from 2022-01-01 with no end date and a weekly refresh; approximate row count is 1500. The record was read from the catalog only: no sample was taken because the store is reachable only via warehouse SQL for analytics roles, and no wiki page documents the calendar itself.",
+      "schema": {
+       "documented": "structured",
+       "field_count": 3,
+       "fields": [
+        {
+         "name": "calendar_date",
+         "type": "date",
+         "description": "Day",
+         "pii": false
+        },
+        {
+         "name": "is_open",
+         "type": "boolean",
+         "description": "Whether the shop was open",
+         "pii": false
+        },
+        {
+         "name": "event_name",
+         "type": "string",
+         "description": "Local event that day, if any",
+         "pii": false
+        }
+       ],
+       "notes": "Column descriptions are one line each; no units, no source or maintenance description, no location/branch field."
+      },
+      "temporal": {
+       "start": "2022-01-01",
+       "end": null,
+       "grain": "daily",
+       "metadata_last_updated": "2026-10-10",
+       "open_ended": true,
+       "refresh_cadence": "weekly"
+      },
+      "spatial": {
+       "coverage": [
+        "IT"
+       ],
+       "code_system": "free-text event names; no geographic code or branch field",
+       "notes": "Catalog location is an Azure path for the Valdena shop calendar; the catalog does not state the city or branch covered, so local-event relevance to the shop's location is unconfirmed."
+      },
+      "ownership": {
+       "owner": "Store Operations",
+       "publisher": null,
+       "steward": "Store Operations steward (named individual in catalog)"
+      },
+      "licence": {
+       "name": "internal",
+       "agreement_status": null,
+       "attribution_text": null,
+       "commercial_use": "not_applicable",
+       "evidence": "get_catalog_entry internal.store.calendar: classification 'internal'",
+       "mixed_sources": false,
+       "url": null
+      },
+      "access": {
+       "method": "warehouse_sql",
+       "auth_required": true,
+       "reachable": null,
+       "classification": "internal",
+       "request_process": "Open to analytics roles (catalog access.request_process). Not tested: no connection attempted.",
+       "approx_size_bytes": null
+      },
+      "declared_metadata": {
+       "status": "active",
+       "contains_pii": false,
+       "grain": "daily",
+       "refresh_cadence": "weekly",
+       "row_count_approx": 1500,
+       "classification": "internal"
+      },
+      "documentation_excerpts": [
+       "Opening days, closures and local events for the shop. (catalog description)",
+       "Whether the shop was open (is_open column description)",
+       "Local event that day, if any (event_name column description)",
+       "Treat those days as missing, not as zero sales. (wiki till_migration_2024, body, last_edited 2024-03-12; refers to sales.daily_by_product, not to this calendar)"
+      ],
+      "quality_notes": [
+       "Row count vs coverage: row_count_approx 1500 does not match a daily calendar from 2022-01-01 to the catalog export date 2026-10-14 (about 1,750 calendar days). Either about 250 days are missing or the row count is stale; unverified.",
+       "Till-migration gap: the candidate's claim that this calendar is needed to check the till-migration gap is not supported by documentation. The only wiki page on the migration (till_migration_2024, last edited 2024-03-12) says gap days (2024-02-05 to 2024-03-10) are missing in sales.daily_by_product and says nothing about the calendar; is_open for those days is not documented.",
+       "No wiki backlinks: no page describes how is_open or event_name are maintained, sourced or validated.",
+       "event_name has no start/end, source, or confidence fields; event list completeness is unknown.",
+       "No location/branch field: cannot confirm the calendar covers the Valdena shop's city/branch (candidate's own suspicion, confirmed as undocumented).",
+       "Refresh: weekly with last refresh 2026-10-10, so recent days are updated only weekly; catalog exported 2026-10-14.",
+       "Calendar coverage of the history window (2023-06-01 to 2025-05-31) and recent window (2025-06-01 to 2026-03-31) is implied by temporal_coverage start 2022-01-01 and open end, but not verified by sample."
+      ],
+      "provenance": [
+       {
+        "claim": "Source is an internal catalog entry, owner Store Operations, status active, daily grain, classification internal, no PII",
+        "evidence": "get_catalog_entry internal.store.calendar"
+       },
+       {
+        "claim": "Temporal coverage 2022-01-01 with no end date; weekly refresh; last refreshed 2026-10-10; approx 1500 rows",
+        "evidence": "get_catalog_entry internal.store.calendar (temporal_coverage, refresh_cadence, last_refreshed, row_count_approx)"
+       },
+       {
+        "claim": "Access is warehouse_sql, open to analytics roles; not tested",
+        "evidence": "get_catalog_entry internal.store.calendar (access)"
+       },
+       {
+        "claim": "No wiki page documents this calendar; the only related wiki page covers the 2024 till migration and refers to sales.daily_by_product",
+        "evidence": "get_catalog_entry backlinks empty; search_internal_catalog 'shop calendar opening days closures local events'; read_wiki_page till_migration_2024"
+       },
+       {
+        "claim": "Till migration gap 2024-02-05 to 2024-03-10 is documented for sales, not the calendar",
+        "evidence": "read_wiki_page till_migration_2024"
+       }
+      ],
+      "unknowns": [
+       "Whether the store was actually open on each day (no sample or data read)",
+       "Whether row count 1500 is current or stale; actual row count and date gaps",
+       "Which city or branch the calendar covers",
+       "Who curates event_name entries and how complete the event list is",
+       "Source of is_open (manual entry, POS-derived, or other)",
+       "Whether is_open is set for the 2024 till-migration gap days",
+       "Whether analytics access is granted to this project; connection not tested",
+       "Data sample and column types beyond catalog descriptions"
+      ]
+     },
+     "name": "submit_catalog_record",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01Rj8cWowb6BAGSvP6ZMMu4Y",
+     "content": "accepted"
+    }
+   ]
+  }
+ ]
+}

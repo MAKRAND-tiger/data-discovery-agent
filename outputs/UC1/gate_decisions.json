@@ -1,0 +1,19 @@
+{
+  "decisions": [
+    {
+      "url": "https://archive.ics.uci.edu/dataset/360/air+quality",
+      "decision": "accept",
+      "reason": "Directly covers primary prototype sensor requirements for N1 in the 2004-2005 window."
+    },
+    {
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/sdg_11_52?format=JSON&lang=EN&geo=IT",
+      "decision": "accept",
+      "reason": "Provides official regional air quality indicators for Italy under need N6 across target windows."
+    },
+    {
+      "url": "https://catalog.data.gov/dataset/open-air-chicago-hour-aggregations",
+      "decision": "accept",
+      "reason": "Evaluated deliberately as a potential geographic proxy for prototype feature engineering."
+    }
+  ]
+}

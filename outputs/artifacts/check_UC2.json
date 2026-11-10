@@ -1,0 +1,17 @@
+{
+  "use_case": "UC2",
+  "problems": [],
+  "trace_stats": {
+    "llm_calls": 56,
+    "input_tokens": 636955,
+    "output_tokens": 108510,
+    "tool_calls": 59,
+    "tool_errors": 4,
+    "http_live": 10,
+    "http_refused": 2,
+    "refused_hosts": [
+      "date.nager.at"
+    ],
+    "unreachable_links": []
+  }
+}

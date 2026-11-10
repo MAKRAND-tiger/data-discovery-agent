@@ -1,0 +1,137 @@
+{
+  "source_id": "api.open_meteo_archive",
+  "kind": "public_api",
+  "title": "Open-Meteo Historical Weather API (reanalysis), daily temperature_2m_max",
+  "summary": "Open-Meteo historical weather archive endpoint, queried by latitude/longitude and timezone, returning hourly and daily values per requested location. For UC2 (N3) the relevant field is daily temperature_2m_max in degrees Celsius. Probes returned data for a northern-Italian grid point (45.448 N, 9.169 E, elevation 138 m) for 2023-06-01 to 2023-06-03, 2025-06-01 to 2025-06-05 and 2026-03-25 to 2026-03-31, so the whole history and recent windows were reachable at the probe ends. Grain is hourly with daily aggregates; the shop's own location is not established in the sources read.",
+  "schema": {
+    "documented": "structured",
+    "field_count": null,
+    "fields": [
+      {
+        "name": "time",
+        "type": "date (ISO8601)",
+        "description": "Day of the daily series, in the requested timezone",
+        "unit": null,
+        "pii": false
+      },
+      {
+        "name": "temperature_2m_max",
+        "type": "float",
+        "description": "Daily maximum of air temperature at 2 m",
+        "unit": "°C",
+        "pii": false
+      },
+      {
+        "name": "temperature_2m",
+        "type": "float",
+        "description": "Hourly air temperature at 2 m (returned by default query)",
+        "unit": "°C",
+        "pii": false
+      },
+      {
+        "name": "shortwave_radiation",
+        "type": "float",
+        "description": "Hourly shortwave radiation (returned by default query, not needed for N3)",
+        "unit": "W/m²",
+        "pii": false
+      }
+    ]
+  },
+  "temporal": {
+    "start": "2023-06-01",
+    "end": null,
+    "grain": "daily",
+    "metadata_last_updated": null,
+    "open_ended": null,
+    "refresh_cadence": "unknown"
+  },
+  "spatial": {
+    "coverage": [
+      "IT"
+    ],
+    "code_system": "decimal latitude/longitude (WGS84); the API snaps to a grid cell (returned 45.448154, 9.169279)",
+    "notes": "Probe coordinates 45.46, 9.19 were chosen by the profiler (Milan area) for testing only; no decisions.md or other source fixing the shop's coordinates was found in the catalog search. The register default (Lisbon, 38.72, -9.14) is not Italian and must be replaced."
+  },
+  "ownership": {
+    "owner": null,
+    "publisher": "Open-Meteo.com (provider of the API; upstream reanalysis provider not confirmed)",
+    "steward": null
+  },
+  "licence": {
+    "name": "CC BY 4.0 (for API data, as stated by provider); upstream Copernicus C3S terms also listed",
+    "evidence": "probe_url https://open-meteo.com/en/licence: 'API data are offered under Attribution 4.0 International (CC BY 4.0)'; same page lists 'Weather reanalysis, air quality forecasts and elevation data from Copernicus Climate Change Service C3S ( Licence )' with links to Copernicus licence-to-use PDFs. The page does not say explicitly which upstream dataset backs the archive endpoint. Register terms_url is the same page.",
+    "agreement_status": "not_required_open_data",
+    "commercial_use": "unknown",
+    "mixed_sources": true,
+    "url": "https://open-meteo.com/en/licence",
+    "attribution_text": "Weather data by Open-Meteo.com (link required, per licence page)"
+  },
+  "access": {
+    "method": "rest_api",
+    "auth_required": false,
+    "reachable": true,
+    "approx_size_bytes": null,
+    "request_process": "GET https://archive-api.open-meteo.com/v1/archive with latitude, longitude, start_date, end_date, daily=temperature_2m_max, timezone=Europe/Rome. Register lists approved_purposes prototyping and production; no agreement needed.",
+    "classification": "public"
+  },
+  "declared_metadata": {
+    "has_missing_values": "unknown",
+    "contains_pii": false,
+    "register_agreement_status": "not_required_open_data",
+    "register_approved_purposes": [
+      "prototyping",
+      "production"
+    ],
+    "register_default_timezone": "UTC",
+    "register_default_coordinates": "38.72, -9.14 (Lisbon)"
+  },
+  "documentation_excerpts": [
+    "Register param_notes: latitude/longitude decimal degrees; start_date/end_date YYYY-MM-DD; hourly or daily variable lists. Keep probe ranges to a few days.",
+    "Licence page (open-meteo.com/en/licence): API data are offered under Attribution 4.0 International (CC BY 4.0)",
+    "Licence page: Weather reanalysis, air quality forecasts and elevation data from Copernicus Climate Change Service C3S (Licence)"
+  ],
+  "quality_notes": [
+    "Register default coordinates (38.72, -9.14, Lisbon) and default timezone (UTC) are not Italian; the candidate's suspected issue is confirmed. The probes used 45.46, 9.19 and Europe/Rome, which the API accepted, returning utc_offset_seconds 3600.",
+    "The candidate cites decisions.md for an assumed Italian city. A catalog search for it returned no such page, so that coordinate choice is not verified; the shop location remains unknown.",
+    "The default query adds hourly temperature_2m and shortwave_radiation even when only daily temperature_2m_max is requested; the response carries both. Harmless but needs to be filtered out.",
+    "Reanalysis smooths extremes compared with station observations (candidate's note). Not verified against a source document in this profile; no station data was read.",
+    "Recent window: probe confirmed data to 2026-03-31 (max_date returned for the 2026-03-25 to 2026-03-31 probe). Full 2025-06-01 to 2026-03-31 coverage was not fetched; only the ends were checked.",
+    "Archive refresh cadence and the revision policy for recent days (provisional vs final values) were not found in the sources read."
+  ],
+  "sample_findings": [
+    "Probe 2023-06-01 to 2023-06-03 (Europe/Rome, 45.448N 9.169E): daily temperature_2m_max returned 25.3, 25.7, 24.9 degrees C; no nulls or sentinel values in the 3 values shown.",
+    "Probe 2025-06-01 to 2025-06-05: daily temperature_2m_max returned 30.7, 27.3, 24.5 and two more values; hourly temperature_2m included values such as 22.5, 21.8, 21.3 degrees C; no -999 or -200 sentinels seen.",
+    "Probe 2026-03-25 to 2026-03-31: daily temperature_2m_max values include 17.7, 12.8, 15.4 degrees C; plausible for late March in northern Italy; no sentinels seen.",
+    "Dates returned as ISO8601 day strings; timezone abbreviation GMT+1 with utc_offset_seconds 3600 for Europe/Rome; elevation 138 m for the grid cell."
+  ],
+  "provenance": [
+    {
+      "claim": "Endpoint is https://archive-api.open-meteo.com/v1/archive, needs no agreement, approved for prototyping and production; default coordinates Lisbon and UTC",
+      "evidence": "list_external_register (api.open_meteo_archive)"
+    },
+    {
+      "claim": "Endpoint returns HTTP 200 JSON with daily temperature_2m_max for 2023-06-01 to 2023-06-03 at an Italian grid point",
+      "evidence": "call_public_api api.open_meteo_archive, start 2023-06-01 end 2023-06-03, timezone Europe/Rome"
+    },
+    {
+      "claim": "Endpoint returns data for 2025-06-01 to 2025-06-05 and 2026-03-25 to 2026-03-31",
+      "evidence": "call_public_api api.open_meteo_archive (two probes, 2025-06-01..05 and 2026-03-25..31)"
+    },
+    {
+      "claim": "API data are CC BY 4.0; C3S reanalysis is listed separately under Copernicus licence",
+      "evidence": "probe_url https://open-meteo.com/en/licence"
+    },
+    {
+      "claim": "No decisions.md page on the Italian coordinate choice was found in the catalog",
+      "evidence": "search_internal_catalog 'decisions Open-Meteo coordinates Italian city timezone Europe/Rome weather temperature' (no hit)"
+    }
+  ],
+  "unknowns": [
+    "Which upstream dataset backs the archive endpoint and its exact licence (the licence page lists C3S reanalysis but does not map it to this endpoint).",
+    "Shop's actual location (city/coordinates) and whether the candidate's decisions.md choice exists; the probe used Milan-area coordinates chosen by the profiler.",
+    "Full coverage across 2025-06-01 to 2026-03-31 and the earliest available date (only the 2023-06-01 start was probed).",
+    "Refresh cadence, revision policy for recent days, and metadata last-updated date.",
+    "Accuracy of daily maxima versus station observations for Italian sites (not evaluated; candidate's smoothing note is not verified here).",
+    "Whether commercial use is permitted under the upstream Copernicus terms (CC BY 4.0 is stated for API data but commercial use under the upstream terms was not confirmed)."
+  ]
+}

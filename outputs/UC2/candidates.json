@@ -1,0 +1,133 @@
+{
+  "candidates": [
+    {
+      "source_id": "internal.sales.daily_by_product",
+      "kind": "internal",
+      "title": "Daily sales by product (till system)",
+      "need_ids": [
+        "N1",
+        "N2"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "why_relevant": "Only internal source of daily units_sold and revenue_eur per product_code; catalog temporal coverage starts 2022-01-01 with open end, daily refresh (last 2026-10-14), so it spans both windows on paper.",
+      "found_via": "search 'daily sales ice cream product' and 'POS transactions gelato by day'; get_catalog_entry; wiki till_migration_2024",
+      "suspected_issues": [
+        "Wiki till_migration_2024 (last edited 2024-03-12): till replaced 2024-02-05 to 2024-03-10, no sales recorded, no rows in the table for those days; must be treated as missing, not zero.",
+        "Wiki product_codes_2024 (last edited 2024-04-02): codes ending in 'L' replaced from 2024-04-01; no mapping table exists; match only by product name, names not unique.",
+        "Catalog gives no info on whether units_sold/revenue include voids or refunds; grain is product-day, so closed days are not flagged in this table (must join store.calendar).",
+        "Classification confidential; access via request to Retail Operations (warehouse SQL). No licence/consent recorded beyond internal use.",
+        "Approx 310,000 rows; no info on whether the recent-window extract comes from the same system."
+      ],
+      "location": "azure://valdena-gelato/sales/daily_by_product",
+      "canonical_ref": "sales.daily_by_product"
+    },
+    {
+      "source_id": "internal.sales.products",
+      "kind": "internal",
+      "title": "Product list (current codes, names, categories)",
+      "need_ids": [
+        "N2"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "why_relevant": "Only product-name source for matching old 'L' codes to new codes; needed to build a manual name-based crosswalk.",
+      "found_via": "search 'product code change 2024 mapping'; get_catalog_entry; wiki product_codes_2024",
+      "suspected_issues": [
+        "Holds only CURRENT codes (wiki product_codes_2024), so old codes from the history window are not present here.",
+        "Last refreshed 2025-03-31 while the recent window runs to 2026-03-31; product list may be stale for recent months.",
+        "About 64 rows; wiki says no mapping table exists, so the crosswalk would have to be built and owner-validated.",
+        "Names not unique (wiki product_codes_2024)."
+      ],
+      "location": "azure://valdena-gelato/sales/products",
+      "canonical_ref": "sales.products"
+    },
+    {
+      "source_id": "internal.store.calendar",
+      "kind": "internal",
+      "title": "Shop calendar (opening days, closures, local events)",
+      "need_ids": [
+        "N5",
+        "N1"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "why_relevant": "Only internal record of is_open per day, needed to separate closed days from zero-sales days and to check the till-migration gap; event_name is the only internal events field.",
+      "found_via": "search 'opening hours shop calendar closures...', 'local events eventi comune calendar', 'holiday calendar Italy festivi'; get_catalog_entry",
+      "suspected_issues": [
+        "No wiki backlinks: no documentation page describes this calendar's maintenance or accuracy.",
+        "Refresh is weekly (last 2026-10-10); steward Elena Russo, Store Operations.",
+        "event_name has no start/end or source fields; event list likely incomplete (no evidence either way in catalog).",
+        "Catalog has no location field, so it cannot confirm which city/branch it covers (Valdena branch list not found)."
+      ],
+      "location": "azure://valdena-gelato/store/calendar",
+      "canonical_ref": "store.calendar"
+    },
+    {
+      "source_id": "api.open_meteo_archive",
+      "kind": "public_api",
+      "title": "Open-Meteo Historical Weather API (reanalysis)",
+      "need_ids": [
+        "N3"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "why_relevant": "Registered daily-weather source for N3; can request temperature_2m_max for an Italian location over 2023-06-01 to 2026-03-31.",
+      "found_via": "list_external_register",
+      "suspected_issues": [
+        "Register default coordinates are Lisbon (38.72, -9.14) and default timezone UTC: both must be replaced (coordinates for an assumed Italian city recorded in decisions.md; timezone Europe/Rome).",
+        "Reanalysis smooths extremes compared with station observations (limitation to note).",
+        "Recent-window availability to 2026-03-31 not verified in the register."
+      ],
+      "location": "https://archive-api.open-meteo.com/v1/archive",
+      "canonical_ref": "api.open_meteo_archive"
+    },
+    {
+      "source_id": "api.nager_public_holidays",
+      "kind": "public_api",
+      "title": "Nager.Date public holidays API (country IT)",
+      "need_ids": [
+        "N4"
+      ],
+      "target_windows": [
+        "history",
+        "recent"
+      ],
+      "why_relevant": "Registered source of national Italian public holidays per year; covers 2023-2026 if called per year.",
+      "found_via": "list_external_register",
+      "suspected_issues": [
+        "Register states national holidays only; regional/patron days for the chosen city are not covered and need a separate source.",
+        "Holidays on Sundays need flagging to avoid double counting.",
+        "Register does not confirm Ferragosto or Easter Monday treatment, or whether the shop closes on them; no official Italian source (Gazzetta Ufficiale) linked in register."
+      ],
+      "location": "https://date.nager.at/api/v3/PublicHolidays/{year}/IT",
+      "canonical_ref": "api.nager_public_holidays"
+    }
+  ],
+  "searches_run": [
+    "daily sales ice cream product",
+    "POS transactions gelato by day",
+    "product code change 2024 mapping",
+    "shop location city coordinates store address Valdena branch",
+    "opening hours shop calendar closures holidays shop days closed",
+    "holiday calendar Italy festivi",
+    "Valdena branch list store locations",
+    "local events eventi comune calendar"
+  ],
+  "unmet_needs": [
+    "N2: No mapping table exists (wiki product_codes_2024); no internal crosswalk of old 'L' codes to new codes. Only name-based matching is possible, and names are not unique. Needs the Retail Operations owner to confirm a mapping, or a manual crosswalk built with them. Not a link-supplied dataset.",
+    "N3 location: no source names the shop city or branch; catalog and wiki have no coordinates. A city must be chosen and recorded as an assumption in decisions.md before the Open-Meteo pull.",
+    "N4 regional/patron holidays for the chosen city: not in Nager.Date; needs a regional or statistics source (human-supplied link) if used.",
+    "N5 local events: no internal events log beyond event_name in store.calendar; a comune open-data events calendar for the chosen city would need a human-supplied link and is likely incomplete/undated.",
+    "Sales licence/consent: internal confidential table with access by request; no agreement recorded for the till data beyond internal use. Owner approval of the recent-window extract and product list not found.",
+    "No Valdena branch list found; single-location assumption is unverified."
+  ]
+}

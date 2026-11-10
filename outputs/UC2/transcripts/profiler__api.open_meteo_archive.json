@@ -1,0 +1,487 @@
+{
+ "agent": "profiler__api.open_meteo_archive",
+ "system": "# Operating rules (all discovery agents)\n\nYou are one agent in a data-discovery system. The goal is to locate, catalog and assess the feasibility of data sources for a business problem **before any pipeline is built**.\n\n- **Metadata first, then a small sample, never the whole dataset.** Work from catalog entries, wiki pages, API metadata, landing pages, descriptors and terms pages. You may read a capped sample of a data file with `sample_data_file` to check structure and quality, but never try to download a whole dataset. Do not copy personal data (names, emails, addresses, ids) into your output.\n- **Provenance.** Every claim you make about a source must be traceable to a tool call (tool name and argument), a URL, a catalog field or a wiki page id.\n- **Unknown stays unknown.** If no source states a licence, owner, refresh cadence, consent or coverage date, record null or \"unknown\" and say so. Never infer one from what is typical.\n- **Guardrails are findings.** A refused host (DOMAIN_NOT_ALLOWLISTED), a timeout, a 401/403, an expired agreement or a restricted table is evidence to record. Do not look for another route to the same data.\n- **Documentation beats catalog metadata when it is more specific or more recent.** When they disagree, record both, with dates.\n- **Be economical.** Use the fewest tool calls that answer the question, and run independent calls in parallel. Stop when you have enough evidence, and finish by calling your submit tool.\n\n\n# Role: Profiler\n\nYou profile **one** candidate source and return a **catalog record**: an auto-generated summary of schema, freshness, ownership, licence, access and documented quality issues, with provenance for every claim.\n\nWhat to gather, by kind:\n- **internal**: `get_catalog_entry` (all fields), then every wiki backlink and related doc with `read_wiki_page`. Record catalog vs wiki disagreements in `quality_notes`, quoting both sides with dates. Internal sources have `licence.name = \"internal\"` and `commercial_use = \"not_applicable\"`.\n- **public_api**: `list_external_register` for the endpoint, then one or two small `call_public_api` probes to check that it responds and which period it covers (probe both ends of the needed windows if coverage is in doubt). Read the provider's terms with `probe_url` on `terms_url` and record the licence and its exact source.\n- **vendor_feed**: read the register entry. Do not try to call it. Record the agreement status and detail in `licence.agreement_status`, and set `access.reachable` to false when credentials are revoked or not issued.\n- **dataset_link** (any URL a human supplied; the link can point anywhere):\n  1. `inspect_dataset_link` on the link. It tells you the link type and gives metadata, licence evidence, files and next steps.\n  2. By link type:\n     - `uci_dataset_page`: read `metadata` (declared flags, notes, variables). If `data_url` exists, `sample_data_file` on it. Otherwise the data is only in an archive: describe the schema from the metadata and say the sample was not possible.\n     - `landing_page` (portals such as Kaggle, Zenodo, data.gov, CKAN or Hugging Face): read `jsonld_datasets` first (licence, dates, coverage, distribution), then `meta_description` and `text_start`. Pick the most specific data file from the distribution or `data_links` and `sample_data_file` it, if its host is allowlisted. If downloads need a login or subscription, set `access.auth_required = true`.\n     - `frictionless_datapackage`: `summarize_datapackage` with a `field_filter` for the use case's geography (e.g. the country code prefix the use case needs). Never sample the large CSVs it lists.\n     - `json_stat`: read the summary (dimensions, time, geo codes, warnings).\n     - `data_file`: the sample profile is already in the result. Find documentation for the file (repository README, parent page) if you can, using `probe_url`.\n     - `json_api`: use the shape and dates found. One more call at most.\n     - `login_wall` / `unreachable` / a refused host: record `access.reachable = false` (or `auth_required = true` for a login wall), say which host or credential would be needed, and stop.\n  3. Licence: use the licence from `inspect_dataset_link` and say where it was found (`found_in`). If none was found, look once on the provider's terms page with `probe_url`. Otherwise record null. Never assume a portal's usual licence.\n  4. Copy `canonical_ref` from `inspect_dataset_link` into the record.\n  5. Put what the **sample** showed in `sample_findings`, naming the column: sentinel values, negative quantities, zero shares, odd value sets (country spellings), date formats, personal-looking columns. A sample's date range is the range of the first rows only: take `temporal.start/end` from the documentation, not from the sample, unless the sample is the whole file.\n  6. Decide what the data **is**: entity, grain, period, geography, population. The Risk Assessor judges fit from this.\n  7. **Numeric sentinels.** Search the documentation (notes, variable descriptions, missing-value fields) for numeric markers of missing data, above all `-200` and `-999` (also `-9999`), written as `-200` or `-200.0`. If the documentation says missing values are coded with one of these, treat it as a **missing-value anomaly**: list it in `quality_notes` with the quoted sentence, and count those cells as missing (never as real measurements) in `sample_findings` and in `non_missing_share`. If the declared `has_missing_values` is \"no\" while the documentation describes such a marker, say so explicitly: it is a contradiction between the metadata and the documentation, not a clean column. Check every numeric column in the sample for these values, including float-formatted ones such as `-200.0`.\n\nField rules:\n- `temporal.start` / `temporal.end` are ISO dates (YYYY-MM-DD) of the **data period**. Use `end = null` only for sources that are still updating. `grain` is one of the schema's values.\n- `access.approx_size_bytes`: the largest file or table size you found stated (descriptor bytes, content-length, row counts x width if stated), else null.\n- `access.reachable = false` if the link itself (or its metadata) could not be reached, the host was refused, or the store cannot be restored. A data file that timed out or is an archive that cannot be sampled does NOT make the source unreachable when its metadata was read; note it in `quality_notes`.\n- `licence.mixed_sources = true` when different fields or files come from upstream providers with different terms.\n- `spatial.code_system`: how places are identified (ISO2, ISO3, free-text country names, Eurostat codes, ...). This decides whether joins will work.\n- `schema.documented`: \"structured\" when fields come with names and types, \"free_text_only\" when they are only described in prose, \"none\" otherwise.\n- At least three `provenance` entries. Put everything you could not establish in `unknowns`.\n",
+ "messages": [
+  {
+   "role": "user",
+   "content": "<use_case_spec>\n{\n \"id\": \"UC2\",\n \"title\": \"Ice-cream sales: do hot days and public holidays raise our sales?\",\n \"client\": \"Valdena Gelato Shop (fictional, northern Italy)\",\n \"as_of\": \"2026-10-15\",\n \"geography\": {\n  \"primary\": [\n   \"IT\"\n  ],\n  \"secondary\": []\n },\n \"windows\": [\n  {\n   \"id\": \"history\",\n   \"start\": \"2023-06-01\",\n   \"end\": \"2025-05-31\",\n   \"purpose\": \"Two summers of daily sales, to see how weather and holidays affect them.\"\n  },\n  {\n   \"id\": \"recent\",\n   \"start\": \"2025-06-01\",\n   \"end\": \"2026-03-31\",\n   \"purpose\": \"The most recent months, to check that the pattern still holds.\"\n  }\n ],\n \"needs\": [\n  {\n   \"id\": \"N1\",\n   \"name\": \"Daily ice-cream sales by product\",\n   \"priority\": \"must\",\n   \"min_grain\": \"daily\",\n   \"windows\": [\n    \"history\",\n    \"recent\"\n   ]\n  },\n  {\n   \"id\": \"N2\",\n   \"name\": \"Mapping of product codes before and after the 2024 code change\",\n   \"priority\": \"must\",\n   \"min_grain\": \"static\",\n   \"windows\": [\n    \"history\"\n   ]\n  },\n  {\n   \"id\": \"N3\",\n   \"name\": \"Daily maximum temperature\",\n   \"priority\": \"must\",\n   \"min_grain\": \"daily\",\n   \"windows\": [\n    \"history\",\n    \"recent\"\n   ]\n  },\n  {\n   \"id\": \"N4\",\n   \"name\": \"Public holidays in Italy\",\n   \"priority\": \"should\",\n   \"min_grain\": \"daily\",\n   \"windows\": [\n    \"history\",\n    \"recent\"\n   ]\n  },\n  {\n   \"id\": \"N5\",\n   \"name\": \"Shop opening days and local events\",\n   \"priority\": \"should\",\n   \"min_grain\": \"daily\",\n   \"windows\": [\n    \"history\",\n    \"recent\"\n   ]\n  }\n ]\n}\n</use_case_spec>\n\n<candidate>\n{\n \"source_id\": \"api.open_meteo_archive\",\n \"kind\": \"public_api\",\n \"title\": \"Open-Meteo Historical Weather API (reanalysis)\",\n \"need_ids\": [\n  \"N3\"\n ],\n \"target_windows\": [\n  \"history\",\n  \"recent\"\n ],\n \"why_relevant\": \"Registered daily-weather source for N3; can request temperature_2m_max for an Italian location over 2023-06-01 to 2026-03-31.\",\n \"found_via\": \"list_external_register\",\n \"suspected_issues\": [\n  \"Register default coordinates are Lisbon (38.72, -9.14) and default timezone UTC: both must be replaced (coordinates for an assumed Italian city recorded in decisions.md; timezone Europe/Rome).\",\n  \"Reanalysis smooths extremes compared with station observations (limitation to note).\",\n  \"Recent-window availability to 2026-03-31 not verified in the register.\"\n ],\n \"location\": \"https://archive-api.open-meteo.com/v1/archive\",\n \"canonical_ref\": \"api.open_meteo_archive\"\n}\n</candidate>\n\nProfile this one source and call submit_catalog_record."
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "signature": "CAQSkAUKEggTEAEYAjgBQgh0aGlua2luZxIMY+lbK0VuwlfXNmhIGgz4VYy4Xkr8VSk0C9YiMN95e/A02PLF83PDIJtBMTvTErUnY/KX3fi2BfCWdfqWD+YbNx+xZwqk0kEbwKiGniqrBG5puwMf+7BAotIvUgc9QK3CeUzRx1IWMXGe3i9rQLpjgi6mzHS1gcHp9yCyCrO5sxqz/ijtKed4vBMT68CaN4naHPAoJ23VVIXjlMPjXDmNDX3bZiLlsQCPVjrno85k/VCezs+mynzdcEtLtOYBI6QUToFAc9bp07PKQbz+U2jotuYkYYkp5PIoNDKNQlxY/DLCrALBYmXClpItJInF1NMS7WteF1hTG6f+1GU2vKKtgFDCpez8DC3BqghGWhHHUTTD1fFoEyDKR5iAxQVHZOK0On16lupbM4YQey6JVX8pEpTEsXBpUIoXpo2UruOXxz7IXVy8uh1Y2/Qwf/LHgcLyrAplm+bQ2ebi+KDEE318vP2k0xVDUWMdhniyw5zwPjYdYdpnV/RTn05W1kgtHDNf4nuuVk3TizmYvJncma4mfv3vWcHKJl6KNSHODGwO9hULvSF72V5VN2R9T8OQ4e9F7KLcUKVhrrLDvbLUlFm0Mu1KlBQr6NEAisD9/H6X5WtDunR8W9eL4eETqLCAm8T/SLmYQfHWgFFA6USTD2riqd1wr688p7l/zCSIkAAopME1tyKGSR4BhGMWUTh1QsOdnbX8vXjzbUV8Jf8Kt3IC3+IdcFAPmkV7O1L7/hdNPg9+NkdUk4nI/mNmGtZDaQG5DFf+IO+pJ/x/YuAb4ct5vPX9MnoazSvXdy7zrQL/xf0dlI7ICyYJ+GSSTkNMbWS6QvZ3ekTTNHJEbhgB",
+     "thinking": "",
+     "type": "thinking"
+    },
+    {
+     "id": "toolu_bdrk_015w7dTP2XXXY9LKXnTf7xN5",
+     "input": {},
+     "name": "list_external_register",
+     "type": "tool_use"
+    },
+    {
+     "id": "toolu_bdrk_014hNFXe4odmax2EfUkXv35p",
+     "input": {
+      "source_id": "api.open_meteo_archive",
+      "query": {
+       "latitude": "45.46",
+       "longitude": "9.19",
+       "start_date": "2025-06-01",
+       "end_date": "2025-06-05",
+       "daily": "temperature_2m_max",
+       "timezone": "Europe/Rome"
+      }
+     },
+     "name": "call_public_api",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_015w7dTP2XXXY9LKXnTf7xN5",
+     "content": "{\"use_case\": \"UC2\", \"sources\": [{\"id\": \"policy.open_data_links\", \"kind\": \"policy\", \"title\": \"Open-data policy for dataset links supplied by analysts\", \"use_cases\": [\"UC1\", \"UC2\"], \"agreement_status\": \"not_required_open_data\", \"approved_purposes\": [\"prototyping\", \"benchmarking\", \"context\"], \"notes\": \"Legal allows publicly available datasets (repositories such as UCI or Zenodo, statistics offices, open-data portals) for prototyping, benchmarking and context, subject to each dataset's own licence as read at its source. Datasets behind a login, with an unknown licence or a non-commercial licence need Legal review before use. Production use of any external dataset needs Legal sign-off.\", \"docs_url\": null, \"terms_url\": null}, {\"id\": \"api.open_meteo_archive\", \"kind\": \"public_api\", \"title\": \"Open-Meteo Historical Weather API (reanalysis)\", \"use_cases\": [\"UC1\", \"UC2\"], \"agreement_status\": \"not_required_open_data\", \"approved_purposes\": [\"prototyping\", \"production\"], \"endpoint\": \"https://archive-api.open-meteo.com/v1/archive\", \"path_params\": [], \"default_query\": {\"latitude\": \"38.72\", \"longitude\": \"-9.14\", \"start_date\": \"2014-01-01\", \"end_date\": \"2014-01-03\", \"hourly\": \"temperature_2m,shortwave_radiation\", \"timezone\": \"UTC\"}, \"param_notes\": \"latitude/longitude decimal degrees; start_date/end_date YYYY-MM-DD; hourly or daily variable lists. Keep probe ranges to a few days.\", \"docs_url\": \"https://open-meteo.com/en/docs/historical-weather-api\", \"terms_url\": \"https://open-meteo.com/en/licence\"}, {\"id\": \"api.nager_public_holidays\", \"kind\": \"public_api\", \"title\": \"Nager.Date public holidays API\", \"use_cases\": [\"UC1\", \"UC2\"], \"agreement_status\": \"not_required_open_data\", \"approved_purposes\": [\"prototyping\", \"production\"], \"endpoint\": \"https://date.nager.at/api/v3/PublicHolidays/{year}/{country}\", \"path_params\": [\"year\", \"country\"], \"default_query\": {}, \"param_notes\": \"country is ISO 3166-1 alpha-2 (PT, GB, FR, ...).\", \"docs_url\": \"https://date.nager.at/Api\", \"terms_url\": \"https://github.com/nager/Nager.Date\"}]}"
+    },
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_014hNFXe4odmax2EfUkXv35p",
+     "content": "{\"source_id\": \"api.open_meteo_archive\", \"url\": \"https://archive-api.open-meteo.com/v1/archive?latitude=45.46&longitude=9.19&start_date=2025-06-01&end_date=2025-06-05&hourly=temperature_2m,shortwave_radiation&timezone=Europe%2FRome&daily=temperature_2m_max\", \"status\": 200, \"error\": null, \"content_type\": \"application/json; charset=utf-8\", \"bytes\": 4025, \"truncated\": false, \"from_cache\": false, \"dates_found\": {\"min_date\": \"2025-06-01\", \"max_date\": \"2025-06-05\", \"n_dates\": 125}, \"shape\": {\"latitude\": 45.448154, \"longitude\": 9.169279, \"generationtime_ms\": 0.16832351684570312, \"utc_offset_seconds\": 3600, \"timezone\": \"Europe/Rome\", \"timezone_abbreviation\": \"GMT+1\", \"elevation\": 138.0, \"hourly_units\": {\"time\": \"iso8601\", \"temperature_2m\": \"°C\", \"shortwave_radiation\": \"W/m²\"}, \"hourly\": {\"time\": [\"2025-06-01T00:00\", \"2025-06-01T01:00\", \"2025-06-01T02:00\", \"… 117 more items (total 120)\"], \"temperature_2m\": [22.5, 21.8, 21.3, \"… 117 more items (total 120)\"], \"shortwave_radiation\": [0.0, 0.0, 0.0, \"… 117 more items (total 120)\"]}, \"daily_units\": {\"time\": \"iso8601\", \"temperature_2m_max\": \"°C\"}, \"daily\": {\"time\": [\"2025-06-01\", \"2025-06-02\", \"2025-06-03\", \"… 2 more items (total 5)\"], \"temperature_2m_max\": [30.7, 27.3, 24.5, \"… 2 more items (total 5)\"]}}}"
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "signature": "CAQS0wYKEggTEAEYAjgBQgh0aGlua2luZxIMevFTwyrQjhLmfIhAGgzdAUvmQDSuwuCbTI0iMBuPvDzfY52P5b3NoQx0YFmuUB1b/1RNuKlK7p8sgOMhn8ZswO2PVJJUO3VMa7wN1CruBRcC+FMOJhz9kQYmfgcKltOY513vLcR9F/7x+QShIkp2xwp4rcpO8Sb55W8CCGGgnSne0zmABaX1GNI2N2nkClRm6ssP5D+ny4I6/KSpLYFWGJFwTKeSWGP9K9NxaJQM1bJ3qYv7grovzK/NUsyUdkB7liTyzNIi1jluryDfn7DLYaf+I9HAyyTvfHqxuXiDLB694A6pxZPscxVCyIOKLJWO9w731RYxoViMUWvLndAISza8AOVTvmPpk4tS76gBMTNYk/L1soivrLazONIdD2QNbbDY3l1HjjekBRxbFAPW/RyCwTW25USkibTO6C6Z9o6DPwQrWQnWcRR7xtpLLSCapR6NZuNbySejV0bLUheEEYkf87rH2biwb8LxgwegEMC4QSdEmXgsktblQ9YhjYepnNA8W7ieYQq4fbrJaHyW4XW52qcmiwbSrxg/z+Hy/JU5QONrxi8FUcjBhs+QeXqy+/tgRL0+zk+/zL86cBdlCmecJbFCLLkR6e4Z1q2T5LJ8zuD/a21pRuQB6hFIAlBF7DVk7VxDr8G8PuJH3tdZZRT5zGZlS4mr/4SJMyUQAr3FxX6jascM/VQLeok5kUf6pyIiy++H3FbiJnoryK3xp5oK0iLuicl/fjJoL7sMJC9nikINdaRZJQuF5FRav0pWtzTpBOIBOeKFXCIC5+JhSVGqMX5fsyZqyz8d1ppuy+n9S5q861DMCDBGLN9icNPn1sV1l9Yiuhjnu15dedtSYNfBoi6yWNIIggc4OgHYW3PLDmoBVwMD3cfvjKqGMzWa4GUSpUiAyx+iKSwncR8UcbXB73i9wjRrLx221ffS+8mwcqrOGenzV3rMZ47mamUuheOkCVsYXzTR4bPxbozrmY98rQnvDg0kihxo61l8a4mH9HAw27koBCiA/EKVq8eqqBiJwlt34yZDy88R1SyzAciGQbuZVqDL+MiQ7pkpV/t1K4WoLMNH9Yd/19zgPtF1fSML8Jen9qoK+DXSAxgB",
+     "thinking": "",
+     "type": "thinking"
+    },
+    {
+     "id": "toolu_bdrk_01WrsfWLacSpV6ugQ4vswZjR",
+     "input": {
+      "source_id": "api.open_meteo_archive",
+      "query": {
+       "latitude": "45.46",
+       "longitude": "9.19",
+       "start_date": "2026-03-25",
+       "end_date": "2026-03-31",
+       "daily": "temperature_2m_max",
+       "timezone": "Europe/Rome"
+      }
+     },
+     "name": "call_public_api",
+     "type": "tool_use"
+    },
+    {
+     "id": "toolu_bdrk_01DaYYePWprh6QhbXGAQVW82",
+     "input": {
+      "url": "https://open-meteo.com/en/licence"
+     },
+     "name": "probe_url",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01WrsfWLacSpV6ugQ4vswZjR",
+     "content": "{\"source_id\": \"api.open_meteo_archive\", \"url\": \"https://archive-api.open-meteo.com/v1/archive?latitude=45.46&longitude=9.19&start_date=2026-03-25&end_date=2026-03-31&hourly=temperature_2m,shortwave_radiation&timezone=Europe%2FRome&daily=temperature_2m_max\", \"status\": 200, \"error\": null, \"content_type\": \"application/json; charset=utf-8\", \"bytes\": 5371, \"truncated\": false, \"from_cache\": false, \"dates_found\": {\"min_date\": \"2026-03-25\", \"max_date\": \"2026-03-31\", \"n_dates\": 175}, \"shape\": {\"latitude\": 45.448154, \"longitude\": 9.169279, \"generationtime_ms\": 0.07843971252441406, \"utc_offset_seconds\": 3600, \"timezone\": \"Europe/Rome\", \"timezone_abbreviation\": \"GMT+1\", \"elevation\": 138.0, \"hourly_units\": {\"time\": \"iso8601\", \"temperature_2m\": \"°C\", \"shortwave_radiation\": \"W/m²\"}, \"hourly\": {\"time\": [\"2026-03-25T00:00\", \"2026-03-25T01:00\", \"2026-03-25T02:00\", \"… 165 more items (total 168)\"], \"temperature_2m\": [9.4, 9.1, 8.8, \"… 165 more items (total 168)\"], \"shortwave_radiation\": [0.0, 0.0, 0.0, \"… 165 more items (total 168)\"]}, \"daily_units\": {\"time\": \"iso8601\", \"temperature_2m_max\": \"°C\"}, \"daily\": {\"time\": [\"2026-03-25\", \"2026-03-26\", \"2026-03-27\", \"… 4 more items (total 7)\"], \"temperature_2m_max\": [17.7, 12.8, 15.4, \"… 4 more items (total 7)\"]}}}"
+    },
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01DaYYePWprh6QhbXGAQVW82",
+     "content": "{\"url\": \"https://open-meteo.com/en/licence\", \"final_url\": \"https://open-meteo.com/en/licence\", \"status\": 200, \"error\": null, \"content_type\": \"text/html; charset=utf-8\", \"content_length_header\": null, \"last_modified_header\": \"Tue, 10 Nov 2026 16:58:55 GMT\", \"bytes_read\": 40502, \"truncated\": false, \"from_cache\": true, \"format\": \"html\", \"title\": \"🧑‍⚖️ Licence | Open-Meteo.com\", \"text_start\": \"🧑‍⚖️ Licence | Open-Meteo.com Open-Meteo Home Features Pricing API Docs Animations Toggle theme Licence Data Sources Open-Meteo utilises open-data from various national weather services including: Atmospheric, ensemble and wave forecasts from Deutscher Wetterdienst DWD ( CC-BY Licence ) Atmospheric, ensemble and wave forecasts from European Centre for Medium-Range Weather Forecasts ECMWF ( CC-BY Licence ) Atmospheric, ensemble and wave forecasts from NOAA NCEP ( Licence ) Atmospheric and ensemble forecasts from Canadian Meteorological Centre CMC ( Licence ) Atmospheric and wave forecasts from Météo-France ( Licence ) Atmospheric forecasts from Japan Meteorological Agency JMA ( Licence ) Atmospheric forecasts from Norwegian Meteorological Institute ( CC-BY Licence ) Atmospheric forecasts from Chinese Meteorological Administration CMA ( CC-BY Licence ) Atmospheric forecasts from Australian Bureau of Meteorology BOM ( CC-BY Licence ) Atmospheric forecasts from Royal Netherlands Meteorological Institute KNMI ( CC-BY Licence ) Atmospheric forecasts from Danish Meteorological Institute DMI ( CC-BY Licence ) Atmospheric forecasts from UK Met Office ( CC-BY-SA Licence ) Atmospheric forecasts from ItaliaMeteo-ARPAE ( CC-BY Licence ) Atmospheric forecasts from MeteoSwiss ( CC-BY Licence ) Wave forecasts from Copernicus Marine Service ( Licence ) Weather reanalysis, air quality forecasts and elevation data from Copernicus Climate Change Service C3S ( Licence ) Flood forecasts from Global Flood Awareness System GloFAS ( Licence ) Location database from GeoNames ( CC-BY Licence ) Icons from Weather Icons ( SIL OFL 1.1 ) Licence API data are offered under Attribution 4.0 International (CC BY 4.0) You are free to share: copy and redistribute the material in any medium or format and adapt: remix, transform, and build upon the material. Attribution: You must give appropriate credit, provide a link to the licence, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use. You must include a link next to any location Open-Meteo data are displayed, for example: < a href = \\\" https://open-meteo.com/ \\\" > Weather data by Open-Meteo.com </ a > Open-Meteo is open-source Source code is available on GitHub under the GNU Affero General Public Licence Version 3 AGPLv3 or any later version. You can find the licence here . Citation We encourage researchers in the field of meteorology and related disciplines to cite Open-Meteo in their work. By acknowledging Open-Meteo as the source of weather data and forecasts used in their research, researchers contribute to the growing body of knowledge and advancements in the field. Citing Open-Meteo not only gives proper credit to the API but also promotes transparency, reproducibility, and collaboration within the scientific community. Together, let's foster a culture of recognition and support for open-source initiatives like Open-Meteo, ensuring that future researchers can benefit from the valuable resources it provides. Citation: APA MLA Harvard BibTeX Zippenfenig, P. (2023). Open-Meteo.com Weather API [Computer software]. Zenodo. https://doi.org/10.5281/ZENODO.7970649 Open-Meteo Features Pricing About us & Contact Licence Terms & Privacy Weather APIs Weather Forecast API Historical Weather API ECMWF API GFS & RRFS Forecast API Météo-France API DWD ICON API GEM API JMA API Met Norway API Other APIs Ensemble API Climate Change API Marine We\", \"text_chars\": 3693, \"licence_snippets\": [\"🧑‍⚖️ Licence | Open-Meteo.com Open-Meteo Home Features Pricing API Docs Animations Toggle theme Licence Data Sources Open-Meteo utilises open-data from various national weather services including: Atmospheric, ensemble and wave fore\", \"asts from Deutscher Wetterdienst DWD ( CC-BY Licence ) Atmospheric, ensemble and wave forecasts from European Centre for Medium-Range Weather Forecasts ECMWF ( CC-BY Licence ) Atmospheric, ensemble and wave forecasts from NOAA NCEP ( Licence ) Atmospheric and ensemble forecasts from Canadian Meteorological Centre CMC ( Licence ) Atmospheric and wave forecasts from Météo-France ( Lic\", \"Météo-France ( Licence ) Atmospheric forecasts from Japan Meteorological Agency JMA ( Licence ) Atmospheric forecasts from Norwegian Meteorological Institute ( CC-BY Licence ) Atmospheric forecasts from Chinese Meteorological Administration CMA ( CC-BY Licence ) Atmospheric forecasts from Australian Bureau of Meteorology BOM ( CC-BY Licence ) Atmospheric forecasts from Royal Netherl\", \") Atmospheric forecasts from Royal Netherlands Meteorological Institute KNMI ( CC-BY Licence ) Atmospheric forecasts from Danish Meteorological Institute DMI ( CC-BY Licence ) Atmospheric forecasts from UK Met Office ( CC-BY-SA Licence ) Atmospheric forecasts from ItaliaMeteo-ARPAE ( CC-BY Licence ) Atmospheric forecasts from MeteoSwiss ( CC-BY Licence ) Wave forecasts from Copernic\", \" forecasts from Copernicus Marine Service ( Licence ) Weather reanalysis, air quality forecasts and elevation data from Copernicus Climate Change Service C3S ( Licence ) Flood forecasts from Global Flood Awareness System GloFAS ( Licence ) Location database from GeoNames ( CC-BY Licence ) Icons from Weather Icons ( SIL OFL 1.1 ) Licence API data are offered under Attribution 4.0 Inter\", \"ational (CC BY 4.0) You are free to share: copy and redistribute the material in any medium or format and adapt: remix, transform, and build upon the material. Attribution: You must give appropriate credit, provide a link to the licence, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use. You mu\", \"ps://open-meteo.com/ \\\" > Weather data by Open-Meteo.com </ a > Open-Meteo is open-source Source code is available on GitHub under the GNU Affero General Public Licence Version 3 AGPLv3 or any later version. You can find the licence here . Citation We encourage researchers in the field of meteorology and related disciplines to cite Open-Meteo in their work. By acknowledging Open-Meteo \", \"fenig, P. (2023). Open-Meteo.com Weather API [Computer software]. Zenodo. https://doi.org/10.5281/ZENODO.7970649 Open-Meteo Features Pricing About us & Contact Licence Terms & Privacy Weather APIs Weather Forecast API Historical Weather API ECMWF API GFS & RRFS Forecast API Météo-France API DWD ICON API GEM API JMA API Met Norway API Other APIs Ensemble API Climate Change API Marine W\"], \"licence_links\": [\"/en/licence\", \"/en/terms\", \"https://creativecommons.org/licenses/by-sa/4.0/deed.en\", \"https://creativecommons.org/licenses/by/4.0/\", \"https://eccc-msc.github.io/open-data/licence/readme_en/\", \"https://github.com/open-meteo/open-meteo/blob/main/LICENSE\", \"https://marine.copernicus.eu/user-corner/service-commitments-and-licence\", \"https://object-store.os-api.cci2.ecmwf.int/cci2-prod-catalogue/licenses/cems-floods/cems-floods_428a6e1019ec50b3dad9c37a90d630fab139059933a939dd5df620bfcb420cc3.pdf\", \"https://object-store.os-api.cci2.ecmwf.int/cci2-prod-catalogue/licenses/licence-to-use-copernicus-products/licence-to-use-copernicus-products_b4b9451f54cffa16ecef5c912c9cebd6979925a956e3fa677976e0cf198c2c18.pdf\", \"https://open-meteo.com/en/licence\", \"https://openfontlicense.org/\", \"https://www.dwd.de/EN/service/copyright/copyright_node.html\", \"https://www.jma.go.jp/jma/en/copyright.html\"]}"
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "signature": "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",
+     "thinking": "",
+     "type": "thinking"
+    },
+    {
+     "id": "toolu_bdrk_01FP4ZF9ofzX9gsf3P963Zf4",
+     "input": {
+      "query": "decisions Open-Meteo coordinates Italian city timezone Europe/Rome weather temperature",
+      "top_k": 5
+     },
+     "name": "search_internal_catalog",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01FP4ZF9ofzX9gsf3P963Zf4",
+     "content": "{\"query\": \"decisions Open-Meteo coordinates Italian city timezone Europe/Rome weather temperature\", \"hits\": [{\"type\": \"catalog_entry\", \"id\": \"store.calendar\", \"source_id\": \"internal.store.calendar\", \"title\": \"Shop calendar\", \"score\": 2.12, \"snippet\": \"store calendar Shop calendar Opening days, closures and local events for the shop. Operations calendar_date Day is_open Whether the shop was open event_name Local event that day, if any…\"}], \"note\": null}"
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "signature": "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",
+     "thinking": "",
+     "type": "thinking"
+    },
+    {
+     "id": "toolu_bdrk_01LCaqpUudwzug4e8Qz5Hh3J",
+     "input": {
+      "source_id": "api.open_meteo_archive",
+      "query": {
+       "latitude": "45.46",
+       "longitude": "9.19",
+       "start_date": "2023-06-01",
+       "end_date": "2023-06-03",
+       "daily": "temperature_2m_max",
+       "timezone": "Europe/Rome"
+      }
+     },
+     "name": "call_public_api",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01LCaqpUudwzug4e8Qz5Hh3J",
+     "content": "{\"source_id\": \"api.open_meteo_archive\", \"url\": \"https://archive-api.open-meteo.com/v1/archive?latitude=45.46&longitude=9.19&start_date=2023-06-01&end_date=2023-06-03&hourly=temperature_2m,shortwave_radiation&timezone=Europe%2FRome&daily=temperature_2m_max\", \"status\": 200, \"error\": null, \"content_type\": \"application/json; charset=utf-8\", \"bytes\": 2589, \"truncated\": false, \"from_cache\": true, \"dates_found\": {\"min_date\": \"2023-06-01\", \"max_date\": \"2023-06-03\", \"n_dates\": 75}, \"shape\": {\"latitude\": 45.448154, \"longitude\": 9.169279, \"generationtime_ms\": 0.14257431030273438, \"utc_offset_seconds\": 3600, \"timezone\": \"Europe/Rome\", \"timezone_abbreviation\": \"GMT+1\", \"elevation\": 138.0, \"hourly_units\": {\"time\": \"iso8601\", \"temperature_2m\": \"°C\", \"shortwave_radiation\": \"W/m²\"}, \"hourly\": {\"time\": [\"2023-06-01T00:00\", \"2023-06-01T01:00\", \"2023-06-01T02:00\", \"… 69 more items (total 72)\"], \"temperature_2m\": [16.4, 16.7, 17.1, \"… 69 more items (total 72)\"], \"shortwave_radiation\": [0.0, 0.0, 0.0, \"… 69 more items (total 72)\"]}, \"daily_units\": {\"time\": \"iso8601\", \"temperature_2m_max\": \"°C\"}, \"daily\": {\"time\": [\"2023-06-01\", \"2023-06-02\", \"2023-06-03\"], \"temperature_2m_max\": [25.3, 25.7, 24.9]}}}"
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "signature": "CAQS2AkKEggTEAEYAjgBQgh0aGlua2luZxIMYnBlAt/ItRsthSVmGgyb9sU3gnGMsbY0pCwiMKtfrHTeVyHY+yPux7JJwAXEit7N7QtKJhbSNX/UYqG1Y9/V6jTjt4kHekFwjMZH0irzCEngzofWdNzgjV/qhdMaSzq0MJVGu8H6J7T7lY6LmsBI0Mx/uB+Ql6EXcXbboQjcxx5y6Ru5FLO7LbuoD4JFMHVUjD8vCp7jjDadMnxZEoqdmD3FmSS4mAFC5lf+bpGz7+pRFzJ9WqNLu/anQWff3JWkie775jfN2aYitNWBRXVwLhfk39jsKYRd5XfMjwwkCqz2mXdAWgnLX2N0totS1Fi1EHAS8q7zeHa2fETWJ7D22smQSjGXO+ZyDDJ7BbdGnGAgi4/Fh0yLNV3ZcARdkcV9O9nV1lQKUYgf+c9UPdmY3B2gU1iluq1K3OK12Aqg7YOT2R5IQP5pDbAbMrpFSiIcF+3PKJAnplf9qzTuoktRXIhuBwlaoYw471o/0EgiB1svRFMrpZBif/DxxZneP2jD+ZYHQj7AMAFf+39kEVYIA4zPLq5xUlPYWJG3Vi+H2ndsXJdC8tukb5gPmlYE2Z0aeer8W3WY8lMDHfVJQOblOGaap1zCzzSmebqiPm8tSiTbjzIJp9XXfwMg13eYXEW7FpIt41bKApJVGqM6kcLLZE4N8LcoYi4lYKh05YpCBfpt3oE2lqhbC1yMyXyiXqS2L4eiFbKZODU7xjnksjpxXVecUiysxAOK2mM0D8pps0zy9FIbB0ubv41xkd4WboVuSYRQm3+BCMueOy6xjHvQLVhGDOM5VtOM5Tz00yoCBfiSSt7wDdXYeG4B3iD+mEtvmLnsjwb7vlfjLJLYinFJzjP4rK7hxFwgjn1EEvjCoIo4eHXpmo7WdEC16JkIMb7OK8Ei2hj6PfcgZZaUy6nxV/COULVKKyxonTGlAjupwkVuC6D1l9CZP5VXQFydU/J5f3vXq6/tgLptCzTCQJzOu+2/No0HALsm+gWfMTPmz1Nes5M/ZQnJDMpsDHy3aTmHVqEY+tMC1TMYzppzZMbWSHaKAag6OG7dTzxygJuhkscId6eW/LpG6NAPoCDfj4SIJnl/KRe/aXybXk4ZmOpsPJhwRq/ZLAEKhsQeWdz3gTZO8/1B/zPWOxONKUcnopwRGxr7NXQQYBIh1Efm0oWu0xtcyBXtYzm4QY4bU33kN6kgDuxKrQ29lSVRuiuHySNGTyVAy9mDNoTHU2/hRmtBjRZVVm3dMYNnOwRnlxQyNrriHmekOXgv6zfuLXqISmfifMaBVHPSg4lMBi+iEJg2xp2S2Oaa391ZVRSV6EfR4qWfOTBGAGnsX7ixroXiAVIStzXsc3sd9pdKxEAeKKYYutYOuWozzsf8RujFdGyBw5S5swmCypeJNiagVtwDAbQEHpwFjEva4llH5YHpvPWLsTBdSjI68Ot6JxLY/voA7R4fr4heoSA/f8SEqMYNEu2q/LtSGDMbLCLV8WP+PgQJL8PYTdIdSSZaHHLZh4GUkiW+f4WiJS7ShxaVwfSxMQlZE4rQpWdoJcRieJIi3QGqroNcmYPt5QU/tsYR7PYYtQ98N5quUJ6N51nyyrVffW7jMcdQ0Q5q14sIkSG7U4B7S/4QGAE=",
+     "thinking": "",
+     "type": "thinking"
+    },
+    {
+     "id": "toolu_bdrk_01MdA7vGEBdFMxD9awbzkTnM",
+     "input": {
+      "source_id": "api.open_meteo_archive",
+      "kind": "public_api",
+      "title": "Open-Meteo Historical Weather API (reanalysis), daily temperature_2m_max",
+      "summary": "Open-Meteo historical weather archive endpoint, queried by latitude/longitude and timezone, returning hourly and daily values per requested location. For UC2 (N3) the relevant field is daily temperature_2m_max in degrees Celsius. Probes returned data for a northern-Italian grid point (45.448 N, 9.169 E, elevation 138 m) for 2023-06-01 to 2023-06-03, 2025-06-01 to 2025-06-05 and 2026-03-25 to 2026-03-31, so the whole history and recent windows were reachable at the probe ends. Grain is hourly with daily aggregates; the shop's own location is not established in the sources read.",
+      "schema": {
+       "documented": "structured",
+       "field_count": null,
+       "fields": [
+        {
+         "name": "time",
+         "type": "date (ISO8601)",
+         "description": "Day of the daily series, in the requested timezone",
+         "unit": null,
+         "pii": false
+        },
+        {
+         "name": "temperature_2m_max",
+         "type": "float",
+         "description": "Daily maximum of air temperature at 2 m",
+         "unit": "°C",
+         "pii": false
+        },
+        {
+         "name": "temperature_2m",
+         "type": "float",
+         "description": "Hourly air temperature at 2 m (returned by default query)",
+         "unit": "°C",
+         "pii": false
+        },
+        {
+         "name": "shortwave_radiation",
+         "type": "float",
+         "description": "Hourly shortwave radiation (returned by default query, not needed for N3)",
+         "unit": "W/m²",
+         "pii": false
+        }
+       ]
+      },
+      "temporal": {
+       "start": "2023-06-01",
+       "end": null,
+       "grain": "daily",
+       "metadata_last_updated": null,
+       "open_ended": null,
+       "refresh_cadence": "unknown"
+      },
+      "spatial": {
+       "coverage": [
+        "IT"
+       ],
+       "code_system": "decimal latitude/longitude (WGS84); the API snaps to a grid cell (returned 45.448154, 9.169279)",
+       "notes": "Probe coordinates 45.46, 9.19 were chosen by the profiler (Milan area) for testing only; no decisions.md or other source fixing the shop's coordinates was found in the catalog search. The register default (Lisbon, 38.72, -9.14) is not Italian and must be replaced."
+      },
+      "ownership": {
+       "owner": null,
+       "publisher": "Open-Meteo.com (provider of the API; upstream reanalysis provider not confirmed)",
+       "steward": null
+      },
+      "licence": {
+       "name": "CC BY 4.0 (for API data, as stated by provider); upstream Copernicus C3S terms also listed",
+       "evidence": "probe_url https://open-meteo.com/en/licence: 'API data are offered under Attribution 4.0 International (CC BY 4.0)'; same page lists 'Weather reanalysis, air quality forecasts and elevation data from Copernicus Climate Change Service C3S ( Licence )' with links to Copernicus licence-to-use PDFs. The page does not say explicitly which upstream dataset backs the archive endpoint. Register terms_url is the same page.",
+       "agreement_status": "not_required_open_data",
+       "commercial_use": "unknown",
+       "mixed_sources": true,
+       "url": "https://open-meteo.com/en/licence",
+       "attribution_text": "Weather data by Open-Meteo.com (link required, per licence page)"
+      },
+      "access": {
+       "method": "rest_api",
+       "auth_required": false,
+       "reachable": true,
+       "approx_size_bytes": null,
+       "request_process": "GET https://archive-api.open-meteo.com/v1/archive with latitude, longitude, start_date, end_date, daily=temperature_2m_max, timezone=Europe/Rome. Register lists approved_purposes prototyping and production; no agreement needed.",
+       "classification": "public"
+      },
+      "declared_metadata": {
+       "has_missing_values": "unknown",
+       "contains_pii": false,
+       "register_agreement_status": "not_required_open_data",
+       "register_approved_purposes": [
+        "prototyping",
+        "production"
+       ],
+       "register_default_timezone": "UTC",
+       "register_default_coordinates": "38.72, -9.14 (Lisbon)"
+      },
+      "documentation_excerpts": "{\"register docs_url\": \"https://open-meteo.com/en/docs/historical-weather-api\", \"register param_notes\": \"latitude/longitude decimal degrees; start_date/end_date YYYY-MM-DD; hourly or daily variable lists. Keep probe ranges to a few days.\", \"licence page\": \"API data are offered under Attribution 4.0 International (CC BY 4.0)\"}",
+      "quality_notes": [
+       "Register default coordinates (38.72, -9.14, Lisbon) and default timezone (UTC) are not Italian; the candidate's suspected issue is confirmed. The probes used 45.46, 9.19 and Europe/Rome, which the API accepted, returning utc_offset_seconds 3600.",
+       "The candidate cites decisions.md for an assumed Italian city. A catalog search for it returned no such page, so that coordinate choice is not verified; the shop location remains unknown.",
+       "The default query adds hourly temperature_2m and shortwave_radiation even when only daily temperature_2m_max is requested; the response carries both. Harmless but needs to be filtered out.",
+       "Reanalysis smooths extremes compared with station observations (candidate's note). Not verified against a source document in this profile; no station data was read.",
+       "Recent window: probes confirmed data to 2026-03-31 (max_date returned for 2026-03-25 to 2026-03-31 probe). Full 2025-06-01 to 2026-03-31 coverage was not fetched; only the ends were checked.",
+       "Archive refresh cadence and the revision policy for recent days (provisional vs final values) were not found in the sources read."
+      ],
+      "sample_findings": [
+       "Probe 2023-06-01 to 2023-06-03 (Europe/Rome, 45.448N 9.169E): daily temperature_2m_max returned 25.3, 25.7, 24.9 °C; no nulls or sentinel values in the 3 values shown.",
+       "Probe 2025-06-01 to 2025-06-05: daily temperature_2m_max returned 30.7, 27.3, 24.5 and two more values; hourly temperature_2m included values such as 22.5, 21.8, 21.3 °C; no -999 or -200 sentinels seen.",
+       "Probe 2026-03-25 to 2026-03-31: daily temperature_2m_max values include 17.7, 12.8, 15.4 °C; all plausible for late March in northern Italy; no sentinels seen.",
+       "Dates returned as ISO8601 day strings; timezone abbreviation GMT+1 with utc_offset_seconds 3600 for Europe/Rome; elevation 138 m for the grid cell."
+      ],
+      "provenance": [
+       {
+        "claim": "Endpoint is https://archive-api.open-meteo.com/v1/archive and needs no agreement; approved for prototyping and production; default coordinates Lisbon and UTC",
+        "evidence": "list_external_register (api.open_meteo_archive)"
+       },
+       {
+        "claim": "Endpoint returns HTTP 200 JSON with daily temperature_2m_max for 2023-06-01 to 2023-06-03 at an Italian grid point",
+        "evidence": "call_public_api api.open_meteo_archive, start 2023-06-01 end 2023-06-03, timezone Europe/Rome"
+       },
+       {
+        "claim": "Endpoint returns data for 2025-06-01 to 2025-06-05 and 2026-03-25 to 2026-03-31",
+        "evidence": "call_public_api api.open_meteo_archive (two probes, 2025-06-01..05 and 2026-03-25..31)"
+       },
+       {
+        "claim": "API data are CC BY 4.0; C3S reanalysis is listed separately under Copernicus licence",
+        "evidence": "probe_url https://open-meteo.com/en/licence"
+       },
+       {
+        "claim": "No decisions.md page on the Italian coordinate choice was found in the catalog",
+        "evidence": "search_internal_catalog 'decisions Open-Meteo coordinates Italian city timezone Europe/Rome weather temperature' (no hit)"
+       }
+      ],
+      "unknowns": [
+       "Which upstream dataset backs the archive endpoint and its exact licence (the licence page lists C3S reanalysis but does not map it to this endpoint).",
+       "Shop's actual location (city/coordinates) and whether the candidate's decisions.md choice exists; the probe used Milan-area coordinates chosen by the profiler.",
+       "Full coverage across 2025-06-01 to 2026-03-31 and the earliest available date (only the 2023-06-01 start was probed).",
+       "Refresh cadence, revision policy for recent days, and metadata last-updated date.",
+       "Accuracy of daily maxima versus station observations for Italian sites (not evaluated; candidate's smoothing note is not verified here).",
+       "Whether commercial use is permitted under the upstream Copernicus terms (licence name CC BY 4.0 is stated but commercial use was not confirmed)."
+      ]
+     },
+     "name": "submit_catalog_record",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_01MdA7vGEBdFMxD9awbzkTnM",
+     "is_error": true,
+     "content": "Submission rejected. Fix these and call it again:\n- documentation_excerpts: '{\"register docs_url\": \"https://open-meteo.com/en/docs/historical-weather-api\", \"register param_notes\": \"latitude/longitude decimal degrees; start_date/end_date YYYY-MM-DD; hourly or daily variable lists. Keep probe ranges to a few days.\", \"licence page\": \"API data are offered under Attribution 4.0 International (CC BY 4.0)\"}' is not of type 'array'"
+    }
+   ]
+  },
+  {
+   "role": "assistant",
+   "content": [
+    {
+     "id": "toolu_bdrk_015GzsR1ZJR995KHW6iBrjNN",
+     "input": {
+      "source_id": "api.open_meteo_archive",
+      "kind": "public_api",
+      "title": "Open-Meteo Historical Weather API (reanalysis), daily temperature_2m_max",
+      "summary": "Open-Meteo historical weather archive endpoint, queried by latitude/longitude and timezone, returning hourly and daily values per requested location. For UC2 (N3) the relevant field is daily temperature_2m_max in degrees Celsius. Probes returned data for a northern-Italian grid point (45.448 N, 9.169 E, elevation 138 m) for 2023-06-01 to 2023-06-03, 2025-06-01 to 2025-06-05 and 2026-03-25 to 2026-03-31, so the whole history and recent windows were reachable at the probe ends. Grain is hourly with daily aggregates; the shop's own location is not established in the sources read.",
+      "schema": {
+       "documented": "structured",
+       "field_count": null,
+       "fields": [
+        {
+         "name": "time",
+         "type": "date (ISO8601)",
+         "description": "Day of the daily series, in the requested timezone",
+         "unit": null,
+         "pii": false
+        },
+        {
+         "name": "temperature_2m_max",
+         "type": "float",
+         "description": "Daily maximum of air temperature at 2 m",
+         "unit": "°C",
+         "pii": false
+        },
+        {
+         "name": "temperature_2m",
+         "type": "float",
+         "description": "Hourly air temperature at 2 m (returned by default query)",
+         "unit": "°C",
+         "pii": false
+        },
+        {
+         "name": "shortwave_radiation",
+         "type": "float",
+         "description": "Hourly shortwave radiation (returned by default query, not needed for N3)",
+         "unit": "W/m²",
+         "pii": false
+        }
+       ]
+      },
+      "temporal": {
+       "start": "2023-06-01",
+       "end": null,
+       "grain": "daily",
+       "metadata_last_updated": null,
+       "open_ended": null,
+       "refresh_cadence": "unknown"
+      },
+      "spatial": {
+       "coverage": [
+        "IT"
+       ],
+       "code_system": "decimal latitude/longitude (WGS84); the API snaps to a grid cell (returned 45.448154, 9.169279)",
+       "notes": "Probe coordinates 45.46, 9.19 were chosen by the profiler (Milan area) for testing only; no decisions.md or other source fixing the shop's coordinates was found in the catalog search. The register default (Lisbon, 38.72, -9.14) is not Italian and must be replaced."
+      },
+      "ownership": {
+       "owner": null,
+       "publisher": "Open-Meteo.com (provider of the API; upstream reanalysis provider not confirmed)",
+       "steward": null
+      },
+      "licence": {
+       "name": "CC BY 4.0 (for API data, as stated by provider); upstream Copernicus C3S terms also listed",
+       "evidence": "probe_url https://open-meteo.com/en/licence: 'API data are offered under Attribution 4.0 International (CC BY 4.0)'; same page lists 'Weather reanalysis, air quality forecasts and elevation data from Copernicus Climate Change Service C3S ( Licence )' with links to Copernicus licence-to-use PDFs. The page does not say explicitly which upstream dataset backs the archive endpoint. Register terms_url is the same page.",
+       "agreement_status": "not_required_open_data",
+       "commercial_use": "unknown",
+       "mixed_sources": true,
+       "url": "https://open-meteo.com/en/licence",
+       "attribution_text": "Weather data by Open-Meteo.com (link required, per licence page)"
+      },
+      "access": {
+       "method": "rest_api",
+       "auth_required": false,
+       "reachable": true,
+       "approx_size_bytes": null,
+       "request_process": "GET https://archive-api.open-meteo.com/v1/archive with latitude, longitude, start_date, end_date, daily=temperature_2m_max, timezone=Europe/Rome. Register lists approved_purposes prototyping and production; no agreement needed.",
+       "classification": "public"
+      },
+      "declared_metadata": {
+       "has_missing_values": "unknown",
+       "contains_pii": false,
+       "register_agreement_status": "not_required_open_data",
+       "register_approved_purposes": [
+        "prototyping",
+        "production"
+       ],
+       "register_default_timezone": "UTC",
+       "register_default_coordinates": "38.72, -9.14 (Lisbon)"
+      },
+      "documentation_excerpts": [
+       "Register param_notes: latitude/longitude decimal degrees; start_date/end_date YYYY-MM-DD; hourly or daily variable lists. Keep probe ranges to a few days.",
+       "Licence page (open-meteo.com/en/licence): API data are offered under Attribution 4.0 International (CC BY 4.0)",
+       "Licence page: Weather reanalysis, air quality forecasts and elevation data from Copernicus Climate Change Service C3S (Licence)"
+      ],
+      "quality_notes": [
+       "Register default coordinates (38.72, -9.14, Lisbon) and default timezone (UTC) are not Italian; the candidate's suspected issue is confirmed. The probes used 45.46, 9.19 and Europe/Rome, which the API accepted, returning utc_offset_seconds 3600.",
+       "The candidate cites decisions.md for an assumed Italian city. A catalog search for it returned no such page, so that coordinate choice is not verified; the shop location remains unknown.",
+       "The default query adds hourly temperature_2m and shortwave_radiation even when only daily temperature_2m_max is requested; the response carries both. Harmless but needs to be filtered out.",
+       "Reanalysis smooths extremes compared with station observations (candidate's note). Not verified against a source document in this profile; no station data was read.",
+       "Recent window: probe confirmed data to 2026-03-31 (max_date returned for the 2026-03-25 to 2026-03-31 probe). Full 2025-06-01 to 2026-03-31 coverage was not fetched; only the ends were checked.",
+       "Archive refresh cadence and the revision policy for recent days (provisional vs final values) were not found in the sources read."
+      ],
+      "sample_findings": [
+       "Probe 2023-06-01 to 2023-06-03 (Europe/Rome, 45.448N 9.169E): daily temperature_2m_max returned 25.3, 25.7, 24.9 degrees C; no nulls or sentinel values in the 3 values shown.",
+       "Probe 2025-06-01 to 2025-06-05: daily temperature_2m_max returned 30.7, 27.3, 24.5 and two more values; hourly temperature_2m included values such as 22.5, 21.8, 21.3 degrees C; no -999 or -200 sentinels seen.",
+       "Probe 2026-03-25 to 2026-03-31: daily temperature_2m_max values include 17.7, 12.8, 15.4 degrees C; plausible for late March in northern Italy; no sentinels seen.",
+       "Dates returned as ISO8601 day strings; timezone abbreviation GMT+1 with utc_offset_seconds 3600 for Europe/Rome; elevation 138 m for the grid cell."
+      ],
+      "provenance": [
+       {
+        "claim": "Endpoint is https://archive-api.open-meteo.com/v1/archive, needs no agreement, approved for prototyping and production; default coordinates Lisbon and UTC",
+        "evidence": "list_external_register (api.open_meteo_archive)"
+       },
+       {
+        "claim": "Endpoint returns HTTP 200 JSON with daily temperature_2m_max for 2023-06-01 to 2023-06-03 at an Italian grid point",
+        "evidence": "call_public_api api.open_meteo_archive, start 2023-06-01 end 2023-06-03, timezone Europe/Rome"
+       },
+       {
+        "claim": "Endpoint returns data for 2025-06-01 to 2025-06-05 and 2026-03-25 to 2026-03-31",
+        "evidence": "call_public_api api.open_meteo_archive (two probes, 2025-06-01..05 and 2026-03-25..31)"
+       },
+       {
+        "claim": "API data are CC BY 4.0; C3S reanalysis is listed separately under Copernicus licence",
+        "evidence": "probe_url https://open-meteo.com/en/licence"
+       },
+       {
+        "claim": "No decisions.md page on the Italian coordinate choice was found in the catalog",
+        "evidence": "search_internal_catalog 'decisions Open-Meteo coordinates Italian city timezone Europe/Rome weather temperature' (no hit)"
+       }
+      ],
+      "unknowns": [
+       "Which upstream dataset backs the archive endpoint and its exact licence (the licence page lists C3S reanalysis but does not map it to this endpoint).",
+       "Shop's actual location (city/coordinates) and whether the candidate's decisions.md choice exists; the probe used Milan-area coordinates chosen by the profiler.",
+       "Full coverage across 2025-06-01 to 2026-03-31 and the earliest available date (only the 2023-06-01 start was probed).",
+       "Refresh cadence, revision policy for recent days, and metadata last-updated date.",
+       "Accuracy of daily maxima versus station observations for Italian sites (not evaluated; candidate's smoothing note is not verified here).",
+       "Whether commercial use is permitted under the upstream Copernicus terms (CC BY 4.0 is stated for API data but commercial use under the upstream terms was not confirmed)."
+      ]
+     },
+     "name": "submit_catalog_record",
+     "type": "tool_use"
+    }
+   ]
+  },
+  {
+   "role": "user",
+   "content": [
+    {
+     "type": "tool_result",
+     "tool_use_id": "toolu_bdrk_015GzsR1ZJR995KHW6iBrjNN",
+     "content": "accepted"
+    }
+   ]
+  }
+ ]
+}

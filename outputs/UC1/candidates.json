@@ -1,0 +1,133 @@
+{
+  "candidates": [
+    {
+      "source_id": "internal.airq.station_readings",
+      "kind": "internal",
+      "title": "City station readings (hourly), Environment Monitoring Unit",
+      "need_ids": [
+        "N1"
+      ],
+      "target_windows": [
+        "production"
+      ],
+      "why_relevant": "Only internal source of hourly NO2 and PM2.5 from the city's own stations. Catalog temporal_coverage starts 2023-01-01 with no end date, which spans the production window 2024-01-01 to 2025-12-31. Hourly refresh, timestamps in UTC (ts_utc). Does not cover the prototype window.",
+      "found_via": "search_internal_catalog: 'air quality hourly station NO2 PM2.5 Valdena'; 'city monitoring station feed production 2024 2025'; get_catalog_entry; wiki station_network",
+      "suspected_issues": [
+        "Station VR-03 (Via Roma) switched off 2024-06-30, but the catalog still lists the network as active (wiki station_network, last_edited 2024-07-01)",
+        "Access is by request to the Environment Monitoring Unit; no delivery date is recorded, so data is not yet in hand",
+        "Units documented as ug/m3 but no validated vs provisional flag column is listed",
+        "Station location metadata is not in the catalog columns; station coordinates are unknown",
+        "Coverage before 2023-01-01 is absent, so it cannot serve the prototype"
+      ]
+    },
+    {
+      "source_id": "internal.traffic.hourly_counts",
+      "kind": "internal",
+      "title": "Road traffic counts (hourly), Mobility Office",
+      "need_ids": [
+        "N2"
+      ],
+      "target_windows": [
+        "production"
+      ],
+      "why_relevant": "Only internal hourly vehicle-count source, with counters described as near the monitoring stations. Catalog coverage from 2021-01-01 spans the production window.",
+      "found_via": "search_internal_catalog: 'traffic counts hourly ZTL loop sensors'; 'traffic flow data road sensors city'; get_catalog_entry; wiki counter_replacement_2024",
+      "suspected_issues": [
+        "Road counters replaced 2024-03-18; before that counts were per direction, after combined (wiki counter_replacement_2024). Catalog has no note about this change; counts must be adjusted before comparison across the change",
+        "Timestamp is ts_local (local time), not UTC, so alignment with UTC air data needs a DST-aware conversion",
+        "No counter-to-station mapping or counter coordinates are documented in the catalog",
+        "Missing or outage hours may be recorded as zero; not checked",
+        "Access by request to Mobility Office; no delivery date recorded"
+      ]
+    },
+    {
+      "source_id": "internal.clinic.resp_visits_daily",
+      "kind": "internal",
+      "title": "Respiratory visits (daily, by district), Clinical Analytics",
+      "need_ids": [
+        "N4"
+      ],
+      "target_windows": [
+        "production"
+      ],
+      "why_relevant": "Aggregated daily respiratory visit counts by district with no patient identifiers, the form the clinic data policy allows. Catalog coverage starts 2022-01-01, which spans the production window.",
+      "found_via": "search_internal_catalog: 'respiratory clinic visits daily district'; 'health office visits aggregated by district 2024'; get_catalog_entry; wiki clinic_data_policy",
+      "suspected_issues": [
+        "District code list and small-cell suppression rule are not documented in the catalog or the policy page",
+        "Catalog grain is daily but the visit_date meaning (registration vs clinical date) is not stated",
+        "Zero-count vs missing-day handling is not documented",
+        "Clinic opening changes may appear as zeros; not checked"
+      ]
+    },
+    {
+      "source_id": "api.open_meteo_archive",
+      "kind": "public_api",
+      "title": "Open-Meteo Historical Weather API (reanalysis)",
+      "need_ids": [
+        "N3"
+      ],
+      "target_windows": [
+        "prototype",
+        "production"
+      ],
+      "why_relevant": "Register API for hourly temperature and relative humidity covering both windows, with agreement not required and approved for prototyping and production. Coordinates must be set to the assumed city location (proposed Milan, approx. 45.46 N, 9.19 E, unconfirmed), not the Lisbon register default.",
+      "found_via": "list_external_register",
+      "suspected_issues": [
+        "Register default_query uses Lisbon coordinates (38.72, -9.14) and requests temperature_2m and shortwave_radiation only; relative_humidity_2m must be requested explicitly",
+        "Reanalysis grid values, not station observations; urban differences are expected",
+        "Timezone default is UTC; the chosen setting must be recorded",
+        "Coverage for 2004-2005 and 2024-2025 not verified; the 2014 probe range is not evidence of coverage",
+        "Terms page at terms_url not read in this scouting step"
+      ]
+    }
+  ],
+  "searches_run": [
+    "air quality hourly station NO2 PM2.5 Valdena",
+    "centralina qualità dell'aria oraria",
+    "city monitoring station feed production 2024 2025",
+    "ARPA station readings legacy extract",
+    "air pollution monitoring network data request status",
+    "traffic counts hourly ZTL loop sensors",
+    "traffic flow data road sensors city",
+    "mobilità veicoli conteggi orari",
+    "traffic camera counts station proximity",
+    "transport department traffic feed 2024",
+    "weather temperature humidity hourly city",
+    "meteo stazione temperatura umidità",
+    "climate reanalysis historical weather",
+    "weather covariate for air model",
+    "observations from weather station legacy",
+    "respiratory clinic visits daily district",
+    "clinic attendance counts respiratorie",
+    "ambulatorio visite giornaliere distretto",
+    "health office visits aggregated by district 2024",
+    "patient visit event records respiratory",
+    "consent patient data clinic sharing",
+    "PM2.5 deaths national estimate annual",
+    "list_external_register",
+    "public hourly air quality archive 2004 2005 Italy",
+    "mortalità PM2.5 Italia annuale"
+  ],
+  "unmet_needs": [
+    "N1 prototype (public hourly NO2/PM2.5, 2004-03-10 to 2005-04-04): no internal source and no register source; the internal station data starts 2023-01-01. A public dataset link must be supplied at the candidate gate, with its licence read at source.",
+    "N1 production fallback: no regional open-data register entry exists; only needed if the city station feed is delayed.",
+    "N2 production: no register source and no approved external traffic dataset; the only candidate is internal and has a 2024-03-18 counter change. Any external traffic link needs Legal sign-off for production.",
+    "N6 (national PM2.5 attributable deaths, annual): no internal or register source. A statistics-office or burden-of-disease dataset link is needed; it would be context-only.",
+    "N5: excluded. Patient-level visits (clinic.patient_visits) are barred by the clinic data policy and are restricted PII; no lawful basis is recorded.",
+    "Open decisions outside sources: the assumed city location for weather coordinates is unconfirmed and must be recorded in decisions.md; policy.open_data_links is a policy, not a source, so it is not listed as a candidate."
+  ],
+  "rejected_without_profiling": [
+    {
+      "source_id": "vendor.atmosdata_pro",
+      "reason": "Vendor agreement expired: contract AD-2021-114 ran 2022-01-01 to 2025-12-31, renewal waiting on Procurement with no signed renewal, API key revoked 2026-01-01 (register). Must not be used for any window."
+    },
+    {
+      "source_id": "internal.clinic.patient_visits",
+      "reason": "Patient-level visit records are out of scope. The clinic data policy (wiki clinic_data_policy) forbids their use for this analysis, the table is restricted and contains PII, and access requires Data Protection Office approval. Excluded for N5."
+    },
+    {
+      "source_id": "api.nager_public_holidays",
+      "reason": "Register entry is tagged for UC1, but no need in the plan uses holiday data. Not a candidate unless the client adds a holiday covariate."
+    }
+  ]
+}
